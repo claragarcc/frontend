@@ -1,69 +1,65 @@
-
-
-
 import { Link } from "react-router-dom";
-import { ChartBarIcon, MagnifyingGlassIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+import { ArrowRightIcon, CpuChipIcon, VariableIcon } from '@heroicons/react/24/outline';
+
+const buildSubjectUrl = (subjectName) => {
+  const params = new URLSearchParams();
+  params.set('asig', subjectName);
+  return `/ejercicios?${params.toString()}`;
+};
 
 export default function Home() {
   return (
-    <div className="home">
-      {/* HERO */}
-      <section className="text-center">
-        <h1 className="titulo">Tutor Virtual</h1>
-        <p className="descripcion">
-          Un tutor que se adapta a ti. Aprende, corrige, refuerza. 
-        </p> 
-        <div>
-          <a href="/ejercicios" className=" btn-enviar ">
-            Empezar ahora
-          </a>
-        </div>
-      </section>
+    // Ya no necesitamos que el contenedor principal sea relativo
+    <div>
+      {/* ✅ Cabecera tradicional, limpia y en la parte superior */}
+      <header className="main-header">
+        <h1 className="main-title">Tutor Virtual</h1>
+        <p className="main-subtitle">
+          Selecciona una asignatura y comienza tu camino hacia el dominio.
+        </p>
+      </header>
 
-      
+      <div className="flex flex-col md:flex-row min-h-[80vh] bg-white">
 
-      {/* FUNCIONALIDADES
-      <section className="funcionalidades">
-        <Link to="/filtro">
-          <div className="card card-funcion">
-            <MagnifyingGlassIcon className="icono-funcion" />
-            <h3 className="titulo-funcion">Ejercicios</h3>
-            <p className="texto-funcion">Encuentra tus ejercicios.</p>
+        {/* Panel Izquierdo: Dispositivos Electrónicos (Activo) */}
+        <Link
+          to={buildSubjectUrl("Dispositivos electrónicos")}
+          // ✅ Se ha añadido la clase para el borde derecho
+          className="group split-panel bg-slate-50 text-slate-900 border-r border-slate-200"
+        >
+          <div className="split-content">
+            <CpuChipIcon className="h-16 w-16 mb-4 text-slate-400 group-hover:text-custom-red transition-colors duration-300" />
+            <h2 className="panel-title">
+              Dispositivos electrónicos
+            </h2>
+            <p className="panel-subtitle">
+              Fundamentos de la Ley de Ohm, polarización de componentes y semiconductores.
+            </p>
+            <div className="cta-button">
+                Explorar asignatura <ArrowRightIcon className="w-5 h-5" />
+            </div>
           </div>
         </Link>
 
-        <Link to="/interacciones">
-          <div className="card card-funcion">
-            <ChatBubbleLeftRightIcon className="icono-funcion" />
-            <h3 className="titulo-funcion">Tu chat</h3>
-            <p>Habla con el tutor y corrige tus dudas.</p>
+        {/* Panel Derecho: Teoría de Circuitos (Próximamente) */}
+        <div
+          className="group split-panel bg-slate-200 text-slate-500 cursor-not-allowed"
+        >
+          <div className="split-content">
+            <VariableIcon className="h-16 w-16 mb-4 text-slate-400" />
+            <h2 className="panel-title">
+              Teoría de circuitos
+            </h2>
+            <p className="panel-subtitle">
+              Análisis avanzado de circuitos, teoremas de Norton, Thevenin y más.
+            </p>
+            <div className="cta-button-disabled">
+                Próximamente
+            </div>
           </div>
-        </Link>
-
-        <Link to="/dashboard">
-          <div className="card card-funcion">
-            <ChartBarIcon className="icono-funcion" />
-            <h3 className="titulo-funcion">Tu progreso</h3>
-            <p className="texto-funcion">Consulta tu evolución y repasos recomendados.</p>
-          </div>
-        </Link>
-      </section> */}
-
-    <div className="bg-white rounded-xl text-center shadow p-6">
-          <h2 className="text-md font-semibold text-dark mb-4">Resumen de la última sesión</h2>
-          <p className="text-sm  text-gray-700 mb-2">
-            Has trabajado 3 ejercicios. Fallaste en la identificación de la resistencia equivalente y en la aplicación de la ley de Norton.
-          </p>
-          <p className="text-sm font-medium text-rojo">
-            Consejo: Deberías revisar la Ley de Ohm, especialmente el concepto de resistencia equivalente.
-          </p>
         </div>
 
-      {/* FINAL */}
-      <section className="frase-final">
-        <p>“Entender un error es avanzar dos veces.”</p>
-      </section>
+      </div>
     </div>
   );
 }
-

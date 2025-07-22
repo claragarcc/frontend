@@ -1,4 +1,4 @@
-import FiltroEjercicios from './components/FiltroEjercicios.jsx'
+
 import Navbar from './components/Navbar.jsx'
 import { Routes, Route } from 'react-router-dom'
 import Busqueda from './pages/Busqueda'
@@ -14,7 +14,6 @@ export default function App() {
       <Navbar />
       <div className="flex-1">
         <Routes>
-          <Route path="/filtro" element={<FiltroEjercicios />} />
           <Route path="/" element={<Home />} />
           <Route path="/busqueda" element={<Busqueda />} />
           <Route path="/dashboard" element={<Dashboard />} />

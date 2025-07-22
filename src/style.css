@@ -51,24 +51,24 @@ a:hover svg {
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 .btn:hover {
-  background-color: var(--color-grisclaro); /* Un rojo un poco más oscuro al hover */
-  border-color: var(--color-grisclaro);
-  color: var(--color-negro);
+  background-color: var(--color-rojo); /* Un rojo un poco más oscuro al hover */
+  border-color: var(--color-rojo);
+  color: var(--color-blanco);
 }
 
 /* Botón secundario */
 .btn-secondary {
-  border: 2px solid var(--color-grisclaro); /* Borde sólido para distinguirlo */
+  border: 2px solid var(--color-negro); /* Borde sólido para distinguirlo */
   padding: 0.5rem 1.2rem;
   border-radius: 0.5rem;
-  background-color: var(--color-blanco); /* Fondo blanco */
-  color: var(--color-negro); /* Texto en gris oscuro */
+  background-color: var(--color-negro); /* Fondo blanco */
+  color: var(--color-blanco); /* Texto en gris oscuro */
   cursor: pointer;
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 .btn-secondary:hover {
-  background-color: var(--color-grisclaro);
-  color: var(--color-negro);
+  background-color: var(--color-rojo);
+  color: var(--color-blanco);
   border-color: var(--color-grisclaro);
 }
 
@@ -677,7 +677,7 @@ input:focus, textarea:focus, select:focus {
 }
 
 .btn-enviar {
-  background-color: var(--color-rojo);
+  background-color: var(--color-negro);
   color: var(--color-blanco);
   padding: 0.5rem 1.25rem;
   font-size: 0.875rem;
@@ -686,7 +686,6 @@ input:focus, textarea:focus, select:focus {
 }
 .btn-enviar:hover {
   background-color: var(--color-rojo);
-  opacity: 0.8;
   color:var(--color-blanco)
 }
 
@@ -713,11 +712,111 @@ input:focus, textarea:focus, select:focus {
   background-color: var(--color-rojo);
   color: var(--color-blanco);
   padding: 0.79rem 1.7rem;
-  font-size: 1.1rem;
-  border-radius: 9px;
+  font-size: 1.25rem;
+  border-radius: 11px;
   transition: background-color 0.2s ease;
 }
-.btn-enviar:hover {
-  background-color: var(--color-rojo);
+.btn-empezar:hover {
+  background-color: var(--color-grisoscuro);
+  opacity: 0.8;
+  size: 1.4rem;
+  transition: background-color 0.2s ease;
+
   color:var(--color-blanco) !important;
+}
+
+
+
+
+/* ✅ Nuevos estilos para la cabecera superior */
+.main-header {
+  text-align: center;
+  padding: 3rem 1rem; /* 48px de padding vertical */
+  background-color: var(--color-blanco);
+}
+
+.main-title {
+  font-size: 3rem; /* 48px */
+  font-weight: 900;
+  color: var(--color-negro);
+}
+
+.main-subtitle {
+  margin-top: 0.5rem;
+  font-size: 1.25rem; /* 20px */
+  color: var(--color-gris-texto);
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* --- Paneles Split-Screen --- */
+.split-panel {
+  width: 100%;
+  min-height: 50vh;
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.5s ease-in-out;
+}
+
+.split-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  transition: transform 0.5s ease-in-out;
+}
+
+.panel-title {
+  font-size: 2.25rem; /* 36px */
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.panel-subtitle {
+  margin-top: 0.5rem;
+  font-size: 1.125rem; /* 18px */
+  line-height: 1.75rem; /* 28px */
+  max-width: 24rem; /* 384px */
+}
+
+/* --- Colores y Estilos Específicos de los Paneles --- */
+.split-panel.bg-slate-50 { background-color: var(--color-gris-claro); color: var(--color-negro); }
+.split-panel.bg-slate-50 .panel-subtitle { color: var(--color-gris-texto); }
+.split-panel.border-slate-200 { border-color: var(--color-gris-fondo); } /* Para el separador */
+.split-panel.bg-slate-200 { background-color: var(--color-gris-fondo); color: var(--color-gris-texto); cursor: not-allowed; }
+
+/* --- Botones de Acción --- */
+.cta-button, .cta-button-disabled {
+  display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 2rem;
+  padding: 0.75rem 1.5rem; font-weight: 700; border-radius: 9999px;
+  transition: all 0.3s ease 0.1s;
+}
+.cta-button {
+  background-color: var(--color-negro); color: var(--color-blanco);
+  opacity: 0; transform: scale(0.9);
+}
+.cta-button-disabled { background-color: #94a3b8; color: #475569; }
+
+/* --- Efectos Hover --- */
+.split-panel:hover .split-content { transform: scale(1.05); }
+.split-panel:not(.cursor-not-allowed):hover .h-16 { color: var(--color-rojo); }
+.split-panel:not(.cursor-not-allowed):hover .cta-button { opacity: 1; transform: scale(1); }
+.cta-button:hover { background-color: var(--color-rojo); }
+
+/* --- Estilos para Escritorio (Media Query) --- */
+@media (min-width: 768px) {
+  .flex.flex-col.md\:flex-row { flex-direction: row; }
+  .split-panel {
+    width: 50%;
+    /* La altura mínima ahora depende del contenedor padre */
+    min-height: calc(100vh - 168px); /* Ajusta 168px si el padding del header cambia */
+  }
+  .split-panel:not(.cursor-not-allowed):hover { width: 55%; }
+  .split-panel:not(.cursor-not-allowed):hover + .split-panel { width: 45%; }
 }

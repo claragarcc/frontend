@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { TrashIcon, XMarkIcon } from "@heroicons/react/24/outline"; // Importa XMarkIcon para cerrar el modal
 
+const PALABRAS_CLAVE_FIN = ["Enhorabuena, esa es la respuesta correcta"];
 // NOTA: <CheckIcon class="h-6 w-6 text-gray-500" /> estaba aquí suelto, lo he quitado ya que no parece parte del JSX renderizado.
 
 export default function Interacciones() {
@@ -37,6 +38,32 @@ export default function Interacciones() {
 
   // --- MOCK userId (REEMPLAZA ESTO CON TU LÓGICA DE AUTENTICACIÓN REAL) ---
   const MOCK_USER_ID = "681cd8217918fbc4fc7a626f"; // Reemplaza con un ID de usuario válido de tu BBDD
+
+
+  const finalizarEjercicioYRedirigir = useCallback(async (resueltoALaPrimera = false) => {
+        const ejercicioActual = ejerciciosDisponibles.find(e => e._id === ejercicioActualId);
+        if (!ejercicioActual?._id || !MOCK_USER_ID || !currentInteraccionId) {
+            return navigate('/dashboard');
+        }
+        setTimeout(async () => {
+            try {
+                await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/resultados/finalizar`, {
+                    userId: MOCK_USER_ID,
+                    exerciseId: ejercicioActual._id,
+                    interaccionId: currentInteraccionId,
+                    resueltoALaPrimera: resueltoALaPrimera,
+                });
+                navigate('/dashboard');
+            } catch (error) {
+                console.error("Error al finalizar el ejercicio:", error);
+                navigate('/dashboard');
+            }
+        }, 2000);
+    }, [ejercicioActualId, currentInteraccionId, navigate, ejerciciosDisponibles]);
+
+
+
+
 
   useEffect(() => {
     const fetchAndInitialize = async () => {
@@ -269,56 +296,46 @@ export default function Interacciones() {
   // --- Funciones ---
 
   const enviarMensaje = async () => {
-    if (!nuevoMensaje.trim() || !ejercicioActual || isSendingMessage) return;
+        const ejercicioActual = ejerciciosDisponibles.find(e => e._id === ejercicioActualId);
+        if (!nuevoMensaje.trim() || !ejercicioActual || isSendingMessage) return;
+        
+        setIsSendingMessage(true);
+        const userMessageContent = nuevoMensaje.trim();
+        setCurrentChatMessages(prev => [...prev, { role: "user", content: userMessageContent }]);
+        setNuevoMensaje("");
 
-    setIsSendingMessage(true);
-    const userMessageContent = nuevoMensaje.trim();
+        try {
+            const esPrimerMensaje = !currentInteraccionId;
+            let response;
 
-    // Añadir el mensaje del usuario al estado local inmediatamente para una UX responsiva
-    setCurrentChatMessages(prev => [...prev, { role: "user", content: userMessageContent }]);
-    setNuevoMensaje("");
+            if (esPrimerMensaje) {
+                response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/ollama/chat/start-exercise`, { userId: MOCK_USER_ID, exerciseId: ejercicioActual._id, userMessage: userMessageContent });
+                setCurrentInteraccionId(response.data.interaccionId);
+                fetchSidebarInteractions();
+            } else {
+                response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/ollama/chat/message`, { interaccionId: currentInteraccionId, userMessage: userMessageContent });
+            }
+            
+            const { fullHistory } = response.data;
+            setCurrentChatMessages(fullHistory);
 
-    try {
-      let response;
-      if (!currentInteraccionId) {
-        // Si no hay un ID de interacción actual, es una nueva conversación.
-        // Llamamos a la ruta de Ollama para iniciar una nueva conversación.
-        response = await axios.post(
-          import.meta.env.VITE_BACKEND_URL + "/api/ollama/chat/start-exercise", // <-- CAMBIO AQUÍ
-          {
-            userId: MOCK_USER_ID,
-            exerciseId: ejercicioActual._id,
-            userMessage: userMessageContent
-          }
-        );
-        const { interaccionId, fullHistory } = response.data;
-        setCurrentInteraccionId(interaccionId);
-        setCurrentChatMessages(fullHistory);
-        await fetchSidebarInteractions(); // Refresca la lista del sidebar para incluir la nueva interacción
+            if (fullHistory?.length > 0) {
+                // Convertimos a minúsculas y quitamos puntos para que sea más robusto
+                const ultimoMensajeTutor = fullHistory[fullHistory.length - 1].content.toLowerCase().replace('.', '');
+                const ejercicioTerminado = PALABRAS_CLAVE_FIN.some(keyword => ultimoMensajeTutor.includes(keyword));
 
-      } else {
-        // Si ya hay un ID de interacción, continuamos la conversación.
-        // Llamamos a la ruta de Ollama para añadir un mensaje a la conversación existente.
-        response = await axios.post(
-          import.meta.env.VITE_BACKEND_URL + "/api/ollama/chat/message", // <-- CAMBIO AQUÍ
-          {
-            interaccionId: currentInteraccionId,
-            userMessage: userMessageContent
-          }
-        );
-        const { fullHistory } = response.data;
-        setCurrentChatMessages(fullHistory);
-      }
-    } catch (error) {
-      console.error("Error al enviar mensaje:", error);
-      setCurrentChatMessages(prev => [
-        ...prev,
-        { role: "assistant", content: "Error: No se pudo conectar con el tutor. Inténtalo de nuevo." }
-      ]);
-    } finally {
-      setIsSendingMessage(false);
-    }
-  };
+                if (ejercicioTerminado) {
+                    await finalizarEjercicioYRedirigir(esPrimerMensaje);
+                }
+            }
+        } catch (error) {
+            console.error("Error al enviar mensaje:", error);
+            setCurrentChatMessages(prev => [...prev, { role: "assistant", content: "Error: No se pudo conectar con el tutor." }]);
+        } finally {
+            setIsSendingMessage(false);
+        }
+    };
+
 
   const seleccionarInteraccion = useCallback(async (interaccion) => {
     setEjercicioActualId(interaccion.ejercicioId);
