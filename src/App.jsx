@@ -6,6 +6,8 @@ import Dashboard from './pages/Dashboard'
 import Interacciones from './pages/Interacciones'
 import Home from './pages/Home.jsx'
 import Ejercicios from './pages/Ejercicios.jsx'
+import Login from './pages/Login.jsx'
+
 
 export default function App() {
   return (
@@ -19,6 +21,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/interacciones" element={<Interacciones />} />
           <Route path="/ejercicios" element={<Ejercicios />} />
+          <Route path="/login" element={<Login />} />
         </Routes>
       </div>
     </div>
