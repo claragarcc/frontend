@@ -1,23 +1,50 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Legend
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer
 } from "recharts";
-import { ChatBubbleLeftRightIcon, ChartBarIcon, CalendarDaysIcon, FireIcon, SparklesIcon, PuzzlePieceIcon } from '@heroicons/react/24/outline';
+import {
+  CalendarDaysIcon,
+  ExclamationTriangleIcon,
+  ArrowRightIcon
+} from "@heroicons/react/24/outline";
+import { useNavigate } from "react-router-dom";
 
-// --- PASO 1: Definimos la nueva "forma" de los datos que esperamos del backend ---
 const initialState = {
-  interaccionesMedias: 0,
-  eficienciaPorConcepto: [], // Un array de objetos: [{ concepto: 'Ley de Ohm', interacciones: 4.1 }, ...]
+  // ✅ mantenemos lo que ya tienes
   resumenSemanal: {
     ejerciciosCompletados: 0,
     conceptosDistintos: 0,
     rachaDias: 0
   },
+
+  // ✅ reutilizamos tu array actual (aunque lo renombremos visualmente)
+  eficienciaPorConcepto: [], // [{ concepto: 'Ley de Ohm', interacciones: 4 }, ...]
+
   ultimaSesion: {
     tituloEjercicio: "",
     analisis: "Completa un ejercicio para ver aquí tu resumen.",
     consejo: "¡Mucho ánimo!"
+  },
+
+  // ✅ NUEVO: errores o patrones frecuentes (para que el dashboard “tutorice”)
+  erroresFrecuentes: [
+    // ejemplo de forma:
+    // { etiqueta: "CA_OHM_01", texto: "Confunde tensión e intensidad", veces: 3 }
+  ],
+
+  // ✅ NUEVO: recomendación accionable
+  recomendacion: {
+    titulo: "",
+    motivo: "Haz un ejercicio para que el tutor pueda recomendarte una práctica personalizada.",
+    ejercicioId: null,
+    concepto: ""
   }
 };
 
@@ -25,119 +52,240 @@ export default function Dashboard() {
   const [data, setData] = useState(initialState);
   const [loading, setLoading] = useState(true);
 
-  // NOTA: Este ID debe venir de tu sistema de login en el futuro.
+  const navigate = useNavigate();
+
+  // NOTA: esto debe venir de tu login real (CAS) más adelante
   const MOCK_USER_ID = "681cd8217918fbc4fc7a626f";
+  const BACKEND = import.meta.env.VITE_BACKEND_URL;
 
   useEffect(() => {
-    // La llamada al backend sigue siendo la misma, pero ahora esperamos
-    // que la respuesta de /api/progreso/ tenga la nueva estructura de datos.
-    axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/progreso/${MOCK_USER_ID}`)
+    axios
+      .get(`${BACKEND}/api/progreso/${MOCK_USER_ID}`)
       .then((res) => {
-        if (res.data) {
-          // Si faltan datos en la respuesta, los rellenamos con los iniciales para evitar errores
-          const fullData = { ...initialState, ...res.data };
-          setData(fullData);
-        }
+        const fullData = { ...initialState, ...(res.data || {}) };
+        setData(fullData);
       })
-      .catch(error => {
+      .catch((error) => {
         console.error("Error al cargar los datos del progreso:", error);
-        // En caso de error, mostramos el estado inicial para que la página no se rompa.
         setData(initialState);
       })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []); // El array vacío [] asegura que se ejecute solo una vez.
+      .finally(() => setLoading(false));
+  }, [BACKEND]);
+
+  const hasChartData = (data.eficienciaPorConcepto || []).length > 0;
+  const hasErrores = (data.erroresFrecuentes || []).length > 0;
+
+  // Para no “castigar” a quien habla más con el tutor, evitamos lenguaje “eficiencia”
+  const chartTitle = "Dificultad estimada por concepto";
+  const chartHelp =
+    "Aproximación basada en el número medio de mensajes necesarios para resolver ejercicios. Úsalo como señal de qué reforzar, no como nota.";
+
+  // CTA: llevar a Interacciones con ejercicio recomendado
+  const handlePracticar = () => {
+    if (!data.recomendacion?.ejercicioId) {
+      navigate("/busqueda"); // o a donde tengas ejercicios / búsqueda
+      return;
+    }
+    // Si tu Interacciones abre por query param, por ejemplo:
+    // /interacciones?ejercicioId=...
+    navigate(`/interacciones?ejercicioId=${data.recomendacion.ejercicioId}`);
+  };
 
   if (loading) {
-    return <div className="text-center p-10 text-xl text-gray-600">Cargando tu progreso...</div>;
+    return <div className="dashboard-loading">Cargando tu progreso...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8 space-y-8">
-      <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">Tu Progreso</h1>
+    <div className="dashboard-scope">
+      <header className="dashboard-header container-app">
+        <h1 className="dashboard-title">Tu Progreso</h1>
+        <div className="dashboard-acento" />
+        <p className="dashboard-subtitle">
+          Actividad semanal, conceptos que te cuestan más y una recomendación clara para tu próxima sesión.
+        </p>
+      </header>
 
-      {/* --- FILA 1: Métricas Principales (Resumen Semanal y Eficiencia General) --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Tarjeta: Resumen Semanal */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-md p-6 border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-700 mb-4 flex items-center">
-            <CalendarDaysIcon className="h-6 w-6 mr-3 text-red-500"/>
-            Actividad de los Últimos 7 Días
-          </h2>
-          <div className="flex flex-col sm:flex-row justify-around items-center text-center space-y-4 sm:space-y-0 h-full">
-            <div className="flex flex-col items-center p-2">
-              <span className="text-4xl font-bold text-red-600">{data.resumenSemanal.ejerciciosCompletados}</span>
-              <span className="text-sm text-gray-500 mt-1">Ejercicios Completados</span>
+      <main className="dashboard-main container-app">
+        {/* FILA 1 */}
+        <section className="dashboard-grid dashboard-grid-top">
+          {/* Resumen semanal */}
+          <article className="card dashboard-card dashboard-card-wide">
+            <h2 className="dashboard-card-title">
+              <CalendarDaysIcon className="dashboard-icon" />
+              Actividad (últimos 7 días)
+            </h2>
+
+            <div className="dashboard-metrics">
+              <div className="dashboard-metric">
+                <span className="dashboard-metric-value">
+                  {data.resumenSemanal.ejerciciosCompletados}
+                </span>
+                <span className="dashboard-metric-label">Ejercicios completados</span>
+              </div>
+
+              <div className="dashboard-divider" />
+
+              <div className="dashboard-metric">
+                <span className="dashboard-metric-value">
+                  {data.resumenSemanal.conceptosDistintos}
+                </span>
+                <span className="dashboard-metric-label">Conceptos practicados</span>
+              </div>
+
+              <div className="dashboard-divider" />
+
+              <div className="dashboard-metric">
+                <span className="dashboard-metric-value dashboard-streak">
+                  {data.resumenSemanal.rachaDias}
+                </span>
+                <span className="dashboard-metric-label">Días de racha</span>
+              </div>
             </div>
-            <div className="h-16 w-px bg-gray-200 hidden sm:block"></div>
-            <div className="flex flex-col items-center p-2">
-              <span className="text-4xl font-bold text-red-600">{data.resumenSemanal.conceptosDistintos}</span>
-              <span className="text-sm text-gray-500 mt-1">Conceptos Practicados</span>
+          </article>
+
+          {/* Recomendación (sustituye eficiencia general) */}
+          <article className="card dashboard-card dashboard-card-center">
+            <h2 className="dashboard-card-title">
+              Recomendación para tu próxima sesión
+            </h2>
+
+            <p className="dashboard-help" style={{ marginTop: "-0.25rem" }}>
+              {data.recomendacion?.titulo ? (
+                <>
+                  <strong>{data.recomendacion.titulo}</strong>
+                  {data.recomendacion.concepto ? (
+                    <span style={{ color: "var(--color-text-muted)" }}>
+                      {" "}· {data.recomendacion.concepto}
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                <strong>Sin recomendación aún</strong>
+              )}
+            </p>
+
+            <p className="dashboard-help">
+              {data.recomendacion?.motivo}
+            </p>
+
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={handlePracticar}
+              style={{ borderRadius: 9999, marginTop: "0.75rem" }}
+            >
+              Practicar ahora <ArrowRightIcon style={{ width: 18, height: 18 }} />
+            </button>
+          </article>
+        </section>
+
+        {/* FILA 2 */}
+        <section className="dashboard-grid dashboard-grid-bottom">
+          {/* Gráfico (renombrado) */}
+          <article className="card dashboard-card">
+            <h2 className="dashboard-card-title">
+              {chartTitle}
+            </h2>
+
+            <p className="dashboard-help">{chartHelp}</p>
+
+            <div className="dashboard-chart">
+              {hasChartData ? (
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart
+                    data={data.eficienciaPorConcepto}
+                    layout="vertical"
+                    margin={{ top: 8, right: 16, left: 16, bottom: 8 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                    <XAxis type="number" allowDecimals={false} />
+                    <YAxis
+                      type="category"
+                      dataKey="concepto"
+                      width={140}
+                      tick={{ fontSize: 10 }}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "rgba(231,38,33,0.06)" }}
+                      contentStyle={{
+                        backgroundColor: "var(--color-bg-surface)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "12px"
+                      }}
+                    />
+                    {/* seguimos usando "interacciones" porque es lo que ya tienes */}
+                    <Bar
+                      dataKey="interacciones"
+                      name="Mensajes medios"
+                      fill="var(--color-primary)"
+                      barSize={18}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="dashboard-empty">
+                  No hay datos suficientes para mostrar el gráfico.
+                </div>
+              )}
             </div>
-            <div className="h-16 w-px bg-gray-200 hidden sm:block"></div>
-            <div className="flex flex-col items-center p-2">
-              <span className="text-4xl font-bold text-red-600 flex items-center">
-                {data.resumenSemanal.rachaDias} <FireIcon className="h-8 w-8 text-negro-400 ml-1"/>
-              </span>
-              <span className="text-sm text-gray-500 mt-1">Días de Racha</span>
-            </div>
-          </div>
-        </div>
+          </article>
 
-        {/* Tarjeta: Interacciones Medias por Ejercicio */}
-        <div className="bg-white rounded-xl shadow-md p-6 text-center flex flex-col justify-center items-center border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-700 mb-2 flex items-center">
-            <ChatBubbleLeftRightIcon className="h-6 w-6 mr-2 text-red-500"/>
-            Eficiencia General
-          </h2>
-          <p className="text-6xl font-bold text-red-600">{data.interaccionesMedias.toFixed(1)}</p>
-          <p className="mt-1 text-sm text-gray-500">Interacciones medias / ejercicio</p>
-        </div>
-      </div>
+          {/* Errores frecuentes + última sesión en la misma card (más sentido) */}
+          <article className="card dashboard-card">
+            <h2 className="dashboard-card-title">
+              <ExclamationTriangleIcon className="dashboard-icon" />
+              En qué te estás equivocando más
+            </h2>
 
-      {/* --- FILA 2: Desglose por Concepto y Última Sesión --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {/* Gráfico: Análisis de Eficiencia por Concepto */}
-        <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-700 mb-4 flex items-center">
-            <ChartBarIcon className="h-6 w-6 mr-3 text-red-500"/>
-            Eficiencia por Concepto
-          </h2>
-          <p className="text-xs text-gray-500 mb-4 -mt-2">Muestra las interacciones medias que necesitas para cada tema. Barras más largas indican mayor dificultad.</p>
-          <ResponsiveContainer width="100%" height={300}>
-            {data.eficienciaPorConcepto.length > 0 ? (
-              <BarChart data={data.eficienciaPorConcepto} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" allowDecimals={false} />
-                <YAxis type="category" dataKey="concepto" width={120} tick={{ fontSize: 12 }} />
-                <Tooltip cursor={{fill: '#fef2f2'}} contentStyle={{backgroundColor: '#fff', border: '1px solid #ddd'}}/>
-                <Bar dataKey="interacciones" name="Interacciones Medias" fill="#ef4444" barSize={20} />
-              </BarChart>
+            {hasErrores ? (
+              <div style={{ display: "grid", gap: "0.6rem" }}>
+                {(data.erroresFrecuentes || []).slice(0, 3).map((e, idx) => (
+                  <div
+                    key={e.etiqueta || idx}
+                    style={{
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "var(--radius-md)",
+                      padding: "0.85rem 0.9rem",
+                      background: "rgba(0,0,0,0.02)"
+                    }}
+                  >
+                    <div style={{ fontWeight: 700 }}>
+                      {e.texto}
+                    </div>
+                    <div style={{ color: "var(--color-text-muted)", marginTop: 4, fontSize: "0.92rem" }}>
+                      Detectado {e.veces} vez/veces recientemente.
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">No hay datos suficientes para mostrar el gráfico.</div>
+              <div className="dashboard-empty">
+                Cuando completes ejercicios, aquí verás patrones de error y concepciones alternativas frecuentes.
+              </div>
             )}
-          </ResponsiveContainer>
-        </div>
 
-        {/* Tarjeta: Resumen de la Última Sesión */}
-        <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200 flex flex-col">
-          <h2 className="text-xl font-semibold text-gray-700 mb-4 flex items-center">
-            Resumen de la Última Sesión
-          </h2>
-          <div className="bg-gray-100 rounded-lg p-4 flex-grow flex flex-col justify-center">
-            <h3 className="font-bold text-gray-800">{data.ultimaSesion.tituloEjercicio}</h3>
-            <p className="text-sm text-gray-600 mt-2 mb-4">
-              {data.ultimaSesion.analisis}
-            </p>
-            <p className="text-sm font-semibold text-red-800 border-t border-gray-300 pt-3">
-              <span className="font-bold">Consejo del tutor:</span> {data.ultimaSesion.consejo}
-            </p>
-          </div>
-        </div>
-      </div>
+            {/* Separador */}
+            <div style={{ height: 1, background: "var(--color-border)", margin: "1rem 0" }} />
+
+            {/* Última sesión */}
+            <h3 className="dashboard-last-title" style={{ marginBottom: 6 }}>
+              Resumen de la última sesión
+            </h3>
+
+            <div className="dashboard-last">
+              <h4 className="dashboard-last-title">
+                {data.ultimaSesion.tituloEjercicio || "Aún no hay sesión registrada"}
+              </h4>
+
+              <p className="dashboard-last-text">{data.ultimaSesion.analisis}</p>
+
+              <p className="dashboard-last-advice">
+                <span>Consejo del tutor:</span> {data.ultimaSesion.consejo}
+              </p>
+            </div>
+          </article>
+        </section>
+      </main>
     </div>
   );
 }

@@ -14,6 +14,9 @@ import {
   BookOpenIcon,
 } from '@heroicons/react/24/outline';
 
+
+
+
 const navigation = [
   { name: 'Inicio', to: '/', icon: HomeIcon },
   { name: 'Ejercicios', to: '/ejercicios', icon: BookOpenIcon },
@@ -105,4 +108,5 @@ export default function Navbar() {
       )}
     </Disclosure>
   );
+
 }

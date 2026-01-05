@@ -1,22 +1,22 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-    "./src/index.css",
-  ],
+    "./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      // fontFamily: {
+      //   optima: ['Optima', 'sans-serif'],
+      //   futura: ['Futura', 'sans-serif'],
       fontFamily: {
-        optima: ['Optima', 'sans-serif'],
-        futura: ['Futura', 'sans-serif'],
+    sans: ["Futura", "Arial", "Helvetica", "Verdana", "system-ui", "sans-serif"],
+    optima: ["Optima", "sans-serif"],
       },
       colors: {
         rojo: '#E72621',
         azul: '#00728A',
         azuloscuro: '#2C2559',
         grisoscuro: '#454E55',
-        negro: '#FFFFFF',
+        negro: '#00000',
       },
     },
   },

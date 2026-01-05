@@ -135,14 +135,14 @@ export default function EjerciciosPage() {
 
     return (
         <div className="busqueda p-4">
-            <h2 className="titulo centrado text-2xl font-bold mb-6">
+            <h2 className="titulo centrado text-2xl font-semibold mb-6">
                 {filtrosActivos ? "Ejercicios filtrados" : "Todos los ejercicios"}
             </h2>
 
             <Disclosure as="div" className="bg-white shadow-lg rounded-xl max-w-xl mx-auto mt-5 p-6 mb-10 border border-gray-200">
                 {({ open }) => (
                     <>
-                        <DisclosureButton className={classNames("flex justify-between items-center w-full text-xl font-bold text-azuloscuro mb-4 pb-2 border-b border-gray-200", filtrosActivos ? "text-rojo" : "hover:text-rojo")}>
+                        <DisclosureButton className={classNames("flex justify-between items-center w-full text-xl font-semibold text-azuloscuro mb-4 pb-2 border-b border-gray-200", filtrosActivos ? "text-rojo" : "hover:text-rojo")}>
                             <span><MagnifyingGlassIcon className="h-6 w-6 inline-block mr-2" />Filtrar</span>
                             {open ? <ChevronUpIcon className="h-6 w-6 text-gray-500" /> : <ChevronDownIcon className="h-6 w-6 text-gray-500" />}
                         </DisclosureButton>
@@ -214,7 +214,7 @@ export default function EjerciciosPage() {
                                                 <div className="w-48 flex-shrink-0 px-4 hidden md:block">{ejercicio.concepto}</div>
                                             </div>
                                             <div className="w-24 flex-shrink-0 text-center px-4">
-                                                <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-black bg-rojo rounded-full">{ejercicio.nivel}</span>
+                                                <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-semibold leading-none text-black bg-rojo rounded-full">{ejercicio.nivel}</span>
                                             </div>
                                             {/* --- ESTA ES LA LÍNEA MODIFICADA --- */}
                                             <div className="w-20 flex-shrink-0 text-center px-4">

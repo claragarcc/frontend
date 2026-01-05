@@ -10,7 +10,7 @@ const buildSubjectUrl = (subjectName) => {
 export default function Home() {
   return (
     // Ya no necesitamos que el contenedor principal sea relativo
-    <div>
+    <div className="home-scope">
       {/* ✅ Cabecera tradicional, limpia y en la parte superior */}
       <header className="main-header">
         <h1 className="main-title">Tutor Virtual</h1>
@@ -18,7 +18,7 @@ export default function Home() {
           Selecciona una asignatura y comienza tu camino hacia el dominio.
         </p>
       </header>
-
+      
       <div className="flex flex-col md:flex-row min-h-[80vh] bg-white">
 
         {/* Panel Izquierdo: Dispositivos Electrónicos (Activo) */}
