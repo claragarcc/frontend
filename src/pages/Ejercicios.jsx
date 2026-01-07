@@ -50,8 +50,8 @@ export default function EjerciciosPage() {
             try {
                 // Hacemos las dos llamadas a la API en paralelo para más eficiencia
                 const [ejerciciosRes, completedRes] = await Promise.all([
-                    axios.get(`${API}/api/ejercicios`),
-                    axios.get(`${API}/api/resultados/completed/${MOCK_USER_ID}`) // Nueva llamada a la API
+                    axios.get(`/api/ejercicios`),
+                    axios.get(`/api/resultados/completed/${MOCK_USER_ID}`) // Nueva llamada a la API
                 ]);
 
                 const ejerciciosLimpios = (ejerciciosRes.data || []).map(ej => ({

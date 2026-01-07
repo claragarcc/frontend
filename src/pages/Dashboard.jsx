@@ -60,7 +60,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     axios
-      .get(`${BACKEND}/api/progreso/${MOCK_USER_ID}`)
+      .get(`${BACKEND}/api/progreso/${MOCK_USER_ID}`, { withCredentials: true })
+
       .then((res) => {
         const fullData = { ...initialState, ...(res.data || {}) };
         setData(fullData);

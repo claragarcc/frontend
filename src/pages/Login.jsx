@@ -1,9 +1,11 @@
+// src/pages/Login.jsx
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
 
-const DEMO_KEY = "tv_demo_enabled";
-const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:9000";
+const DEMO_FLAG_KEY = "tv_demo_enabled";
+const DEMO_USER_KEY = "tv_demo_key";
+const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:80";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -16,10 +18,45 @@ export default function Login() {
     window.location.href = `${BACKEND}/api/auth/cas/login?returnTo=${returnTo}`;
   }, []);
 
-  // Demo (habilita acceso en desarrollo sin CAS)
-  const handleDemoLogin = useCallback(() => {
-    localStorage.setItem(DEMO_KEY, "true");
-    navigate("/home");
+  // Demo (crea SESIÓN real en backend con cookie, y luego navega)
+  const handleDemoLogin = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      // demoKey estable por navegador (como espera tu backend)
+      let demoKey = localStorage.getItem(DEMO_USER_KEY);
+      if (!demoKey) {
+        demoKey = (globalThis.crypto?.randomUUID?.() || Math.random().toString(16).slice(2))
+          .replace(/-/g, "")
+          .slice(0, 32);
+        localStorage.setItem(DEMO_USER_KEY, demoKey);
+      }
+
+      const resp = await fetch(`${BACKEND}/api/auth/dev-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // 🔴 CLAVE: guarda cookie de sesión
+        body: JSON.stringify({ demoKey }),
+      });
+
+      if (!resp.ok) {
+        const txt = await resp.text().catch(() => "");
+        throw new Error(`DEV login falló (${resp.status}): ${txt}`);
+      }
+
+      // Marcador local opcional (no autentica por sí mismo, solo para UX)
+      localStorage.setItem(DEMO_FLAG_KEY, "true");
+
+      navigate("/home", { replace: true });
+    } catch (e) {
+      console.error(e);
+      alert(
+        "No se pudo iniciar el modo demo.\n\n" +
+          "Comprueba que DEV_BYPASS_AUTH=true en el backend y que VITE_BACKEND_URL sea accesible desde el móvil (no 'localhost')."
+      );
+    } finally {
+      setLoading(false);
+    }
   }, [navigate]);
 
   return (
@@ -31,18 +68,18 @@ export default function Login() {
           <h1 className="login-title">Tutor Virtual</h1>
 
           <p className="login-subtitle">
-            Accede mediante autenticación institucional UPV (CAS) o utiliza el modo demo
-            para desarrollo y demostración.
+            Accede mediante autenticación institucional UPV (CAS) o utiliza el modo demo para
+            desarrollo y demostración.
           </p>
 
           <div className="login-info">
             <div>
-              <strong style={{ color: "var(--color-text-main)" }}>Acceso UPV (CAS):</strong>{" "}
+              <strong className="login-strong">Acceso UPV (CAS):</strong>{" "}
               redirige al sistema de autenticación central y, al volver, el backend crea la sesión.
             </div>
             <div style={{ marginTop: "0.5rem" }}>
-              <strong style={{ color: "var(--color-text-main)" }}>Modo demo:</strong>{" "}
-              permite acceder sin CAS en local para poder desarrollar y mostrar el sistema.
+              <strong className="login-strong">Modo demo:</strong>{" "}
+              crea una sesión en el backend sin CAS para poder desarrollar y mostrar el sistema.
             </div>
           </div>
 
@@ -53,7 +90,7 @@ export default function Login() {
               disabled={loading}
               className={`btn-secondary w-full ${loading ? "btn-loading" : ""}`}
             >
-              <ArrowRightOnRectangleIcon className="w-6 h-6" />
+              <ArrowRightOnRectangleIcon className="w-5 h-5" />
               {loading ? "Iniciando..." : "Acceder con cuenta UPV"}
             </button>
 

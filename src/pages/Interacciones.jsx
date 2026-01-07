@@ -121,7 +121,7 @@ export default function Interacciones() {
 
     try {
       const res = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/interacciones/user/${MOCK_USER_ID}`
+        `/api/interacciones/user/${MOCK_USER_ID}`
       );
 
       const interactionsWithDetails = (res.data || []).map((interaccion) => {
@@ -171,7 +171,7 @@ export default function Interacciones() {
   useEffect(() => {
     const fetchAndInitialize = async () => {
       try {
-        const res = await axios.get(import.meta.env.VITE_BACKEND_URL + "/api/ejercicios");
+        const res = await axios.get( "/api/ejercicios");
         const ejercicios = res.data || [];
         setEjerciciosDisponibles(ejercicios);
 
@@ -190,7 +190,7 @@ export default function Interacciones() {
         if (interaccionIdFromUrl) {
           try {
             const interaccionRes = await axios.get(
-              `${import.meta.env.VITE_BACKEND_URL}/api/interacciones/${interaccionIdFromUrl}`
+              `/api/interacciones/${interaccionIdFromUrl}`
             );
             newCurrentInteraccionId = interaccionRes.data._id;
             newCurrentExerciseId = interaccionRes.data.ejercicio_id;
@@ -204,7 +204,7 @@ export default function Interacciones() {
         if (!newCurrentInteraccionId && interaccionIdFromLocalStorage) {
           try {
             const interaccionRes = await axios.get(
-              `${import.meta.env.VITE_BACKEND_URL}/api/interacciones/${interaccionIdFromLocalStorage}`
+              `/api/interacciones/${interaccionIdFromLocalStorage}`
             );
             newCurrentInteraccionId = interaccionRes.data._id;
             newCurrentExerciseId = interaccionRes.data.ejercicio_id;
@@ -220,7 +220,7 @@ export default function Interacciones() {
         if (!newCurrentInteraccionId && idFromUrl && ejercicios.some((e) => e._id === idFromUrl)) {
           try {
             const existing = await axios.get(
-              `${import.meta.env.VITE_BACKEND_URL}/api/interacciones/byExerciseAndUser/${idFromUrl}/${MOCK_USER_ID}`
+              `/api/interacciones/byExerciseAndUser/${idFromUrl}/${MOCK_USER_ID}`
             );
             if (existing.data && existing.data._id) {
               newCurrentInteraccionId = existing.data._id;
@@ -243,7 +243,7 @@ export default function Interacciones() {
         ) {
           try {
             const existing = await axios.get(
-              `${import.meta.env.VITE_BACKEND_URL}/api/interacciones/byExerciseAndUser/${exerciseIdFromLocalStorage}/${MOCK_USER_ID}`
+              `/api/interacciones/byExerciseAndUser/${exerciseIdFromLocalStorage}/${MOCK_USER_ID}`
             );
             if (existing.data && existing.data._id) {
               newCurrentInteraccionId = existing.data._id;
@@ -312,7 +312,7 @@ export default function Interacciones() {
 
       try {
         const interaccionRes = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/interacciones/${interaccion.id}`
+          `/api/interacciones/${interaccion.id}`
         );
         setCurrentChatMessages(interaccionRes.data.conversacion || []);
         navigate(`/interacciones?id=${interaccion.ejercicioId}&interaccionId=${interaccion.id}`, {
