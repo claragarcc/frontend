@@ -1,48 +1,30 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
-import { demoLogin, getCurrentUser } from "../services/auth"; // ajusta si tu ruta es distinta
+import { demoLogin } from "../services/auth";
 
 export default function Login() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-
-  // Clave demo: si no pones nada, usamos "demo"
   const [demoKey, setDemoKey] = useState("demo");
 
-  // Si ya hay sesión (demo o CAS), fuera del login
-  useEffect(() => {
-    let alive = true;
-
-    (async () => {
-      try {
-        const me = await getCurrentUser();
-        if (alive && me?.authenticated) {
-          navigate("/home", { replace: true });
-        }
-      } catch {
-        // si falla, nos quedamos en login
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [navigate]);
-
-  // CAS real (redirige al backend, que inicia CAS)
+  // CAS real (redirige al backend)
   const handleSSOLogin = useCallback(() => {
     setLoading(true);
     const returnTo = encodeURIComponent(window.location.origin + "/home");
     window.location.href = `/api/auth/cas/login?returnTo=${returnTo}`;
   }, []);
 
-  // Demo: crea sesión en backend (cookie) usando demoKey
+  // Demo: crea sesión REAL en backend (cookie)
   const handleDemoLogin = useCallback(async () => {
     try {
       setLoading(true);
       const key = (demoKey || "demo").trim() || "demo";
-      await demoLogin(key); // <-- esto crea sesión real en backend
+
+      // crea sesión en backend
+      await demoLogin(key);
+
+      // navega ya con sesión creada
       navigate("/home", { replace: true });
     } catch (e) {
       console.error("Demo login error:", e);
@@ -89,7 +71,6 @@ export default function Login() {
 
             <div className="login-divider">O</div>
 
-            {/* Input para que cada persona use su demoKey (así no comparten chats) */}
             <label className="w-full" style={{ display: "block", marginBottom: "0.5rem" }}>
               <span style={{ fontSize: "0.85rem", color: "var(--color-text-muted)" }}>
                 Clave demo (para distinguir usuarios)
