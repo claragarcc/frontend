@@ -1,5 +1,11 @@
 import { Link } from "react-router-dom";
 import { ArrowRightIcon, CpuChipIcon, VariableIcon } from '@heroicons/react/24/outline';
+import { useEffect } from "react";
+import { getCurrentUser } from "../services/auth";
+
+
+
+
 
 const buildSubjectUrl = (subjectName) => {
   const params = new URLSearchParams();
@@ -7,7 +13,13 @@ const buildSubjectUrl = (subjectName) => {
   return `/ejercicios?${params.toString()}`;
 };
 
+
 export default function Home() {
+  useEffect(() => {
+    getCurrentUser().then((data) => {
+      console.log("USUARIO ACTUAL:", data);
+    });
+  }, []);
   return (
     // Ya no necesitamos que el contenedor principal sea relativo
     <div className="home-scope">

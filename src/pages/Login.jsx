@@ -1,26 +1,55 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
+import { demoLogin, getCurrentUser } from "../services/auth"; // ajusta la ruta si tu carpeta es distinta
 
-const DEMO_KEY = "tv_demo_enabled";
-const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:9000";
+const DEMO_KEY_STORAGE = "tv_demo_key";
 
 export default function Login() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
+  // Clave demo: si no pones nada, usa "demo"
+  const [demoKey, setDemoKey] = useState("demo");
+
+  // Si ya estabas autenticada (por demo o por CAS), te mando a /home directamente
+  useEffect(() => {
+    (async () => {
+      const me = await getCurrentUser();
+      if (me?.authenticated) navigate("/home", { replace: true });
+    })();
+  }, [navigate]);
+
   // CAS real (redirige al backend, que inicia CAS)
   const handleSSOLogin = useCallback(() => {
     setLoading(true);
     const returnTo = encodeURIComponent(window.location.origin + "/home");
-    window.location.href = `${BACKEND}/api/auth/cas/login?returnTo=${returnTo}`;
+    window.location.href = `/api/auth/cas/login?returnTo=${returnTo}`;
   }, []);
 
-  // Demo (habilita acceso en desarrollo sin CAS)
-  const handleDemoLogin = useCallback(() => {
-    localStorage.setItem(DEMO_KEY, "true");
-    navigate("/home");
-  }, [navigate]);
+  // Demo: crea sesión real en backend
+  const handleDemoLogin = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      const key = (demoKey || "demo").trim();
+      localStorage.setItem(DEMO_KEY_STORAGE, key);
+
+      await demoLogin(key); // 🔥 esto crea req.session.user en el backend
+      navigate("/home", { replace: true });
+    } catch (err) {
+      console.error("Error en login demo:", err);
+      alert("No se pudo iniciar sesión en modo demo. Revisa consola/back.");
+    } finally {
+      setLoading(false);
+    }
+  }, [demoKey, navigate]);
+
+  // Cargar última demoKey guardada
+  useEffect(() => {
+    const saved = localStorage.getItem(DEMO_KEY_STORAGE);
+    if (saved) setDemoKey(saved);
+  }, []);
 
   return (
     <div className="login-scope">
@@ -42,7 +71,7 @@ export default function Login() {
             </div>
             <div style={{ marginTop: "0.5rem" }}>
               <strong style={{ color: "var(--color-text-main)" }}>Modo demo:</strong>{" "}
-              permite acceder sin CAS en local para poder desarrollar y mostrar el sistema.
+              crea una sesión en el backend sin CAS (solo si DEV_BYPASS_AUTH=true).
             </div>
           </div>
 
@@ -59,13 +88,35 @@ export default function Login() {
 
             <div className="login-divider">O</div>
 
+            {/* Input para que cada persona use su demoKey (así no comparten chats) */}
+            <label className="w-full" style={{ display: "block", marginBottom: "0.5rem" }}>
+              <span style={{ fontSize: "0.85rem", color: "var(--color-text-muted)" }}>
+                Clave demo (para distinguir usuarios)
+              </span>
+              <input
+                type="text"
+                value={demoKey}
+                onChange={(e) => setDemoKey(e.target.value)}
+                className="w-full"
+                style={{
+                  marginTop: "0.25rem",
+                  padding: "0.6rem 0.75rem",
+                  borderRadius: "0.6rem",
+                  border: "1px solid #d1d5db",
+                  outline: "none",
+                }}
+                placeholder="ej: clara, juan, prueba123…"
+                disabled={loading}
+              />
+            </label>
+
             <button
               type="button"
               onClick={handleDemoLogin}
               disabled={loading}
               className={`btn-demo w-full ${loading ? "btn-loading" : ""}`}
             >
-              Entrar en modo demo
+              {loading ? "Entrando..." : "Entrar en modo demo"}
             </button>
           </div>
 
