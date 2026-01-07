@@ -1,63 +1,56 @@
-// src/pages/Login.jsx
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
-
-const DEMO_FLAG_KEY = "tv_demo_enabled";
-const DEMO_USER_KEY = "tv_demo_key";
-const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:80";
+import { demoLogin, getCurrentUser } from "../services/auth"; // ajusta si tu ruta es distinta
 
 export default function Login() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
+  // Clave demo: si no pones nada, usamos "demo"
+  const [demoKey, setDemoKey] = useState("demo");
+
+  // Si ya hay sesión (demo o CAS), fuera del login
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        const me = await getCurrentUser();
+        if (alive && me?.authenticated) {
+          navigate("/home", { replace: true });
+        }
+      } catch {
+        // si falla, nos quedamos en login
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [navigate]);
+
   // CAS real (redirige al backend, que inicia CAS)
   const handleSSOLogin = useCallback(() => {
     setLoading(true);
     const returnTo = encodeURIComponent(window.location.origin + "/home");
-    window.location.href = `${BACKEND}/api/auth/cas/login?returnTo=${returnTo}`;
+    window.location.href = `/api/auth/cas/login?returnTo=${returnTo}`;
   }, []);
 
-  // Demo (crea SESIÓN real en backend con cookie, y luego navega)
+  // Demo: crea sesión en backend (cookie) usando demoKey
   const handleDemoLogin = useCallback(async () => {
     try {
       setLoading(true);
-
-      // demoKey estable por navegador (como espera tu backend)
-      let demoKey = localStorage.getItem(DEMO_USER_KEY);
-      if (!demoKey) {
-        demoKey = (globalThis.crypto?.randomUUID?.() || Math.random().toString(16).slice(2))
-          .replace(/-/g, "")
-          .slice(0, 32);
-        localStorage.setItem(DEMO_USER_KEY, demoKey);
-      }
-
-      const resp = await fetch(`${BACKEND}/api/auth/dev-login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", // 🔴 CLAVE: guarda cookie de sesión
-        body: JSON.stringify({ demoKey }),
-      });
-
-      if (!resp.ok) {
-        const txt = await resp.text().catch(() => "");
-        throw new Error(`DEV login falló (${resp.status}): ${txt}`);
-      }
-
-      // Marcador local opcional (no autentica por sí mismo, solo para UX)
-      localStorage.setItem(DEMO_FLAG_KEY, "true");
-
+      const key = (demoKey || "demo").trim() || "demo";
+      await demoLogin(key); // <-- esto crea sesión real en backend
       navigate("/home", { replace: true });
     } catch (e) {
-      console.error(e);
-      alert(
-        "No se pudo iniciar el modo demo.\n\n" +
-          "Comprueba que DEV_BYPASS_AUTH=true en el backend y que VITE_BACKEND_URL sea accesible desde el móvil (no 'localhost')."
-      );
+      console.error("Demo login error:", e);
+      alert("No se pudo iniciar sesión en modo demo. Revisa el backend.");
     } finally {
       setLoading(false);
     }
-  }, [navigate]);
+  }, [demoKey, navigate]);
 
   return (
     <div className="login-scope">
@@ -79,7 +72,7 @@ export default function Login() {
             </div>
             <div style={{ marginTop: "0.5rem" }}>
               <strong className="login-strong">Modo demo:</strong>{" "}
-              crea una sesión en el backend sin CAS para poder desarrollar y mostrar el sistema.
+              crea una sesión de prueba para poder usar el sistema sin CAS.
             </div>
           </div>
 
@@ -96,13 +89,35 @@ export default function Login() {
 
             <div className="login-divider">O</div>
 
+            {/* Input para que cada persona use su demoKey (así no comparten chats) */}
+            <label className="w-full" style={{ display: "block", marginBottom: "0.5rem" }}>
+              <span style={{ fontSize: "0.85rem", color: "var(--color-text-muted)" }}>
+                Clave demo (para distinguir usuarios)
+              </span>
+              <input
+                type="text"
+                value={demoKey}
+                onChange={(e) => setDemoKey(e.target.value)}
+                className="w-full"
+                style={{
+                  marginTop: "0.25rem",
+                  padding: "0.6rem 0.75rem",
+                  borderRadius: "0.6rem",
+                  border: "1px solid #d1d5db",
+                  outline: "none",
+                }}
+                placeholder="ej: clara, juan, prueba123…"
+                disabled={loading}
+              />
+            </label>
+
             <button
               type="button"
               onClick={handleDemoLogin}
               disabled={loading}
               className={`btn-demo w-full ${loading ? "btn-loading" : ""}`}
             >
-              Entrar en modo demo
+              {loading ? "Entrando..." : "Entrar en modo demo"}
             </button>
           </div>
 

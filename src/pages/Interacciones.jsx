@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { getCurrentUser } from "../services/auth";
+import { api } from "../services/api";
 
 const PALABRAS_CLAVE_FIN = ["Enhorabuena, esa es la respuesta correcta"];
 
@@ -11,6 +12,10 @@ export default function Interacciones() {
   const [ejercicioActualId, setEjercicioActualId] = useState(null);
   const [nuevoMensaje, setNuevoMensaje] = useState("");
   const [currentInteraccionId, setCurrentInteraccionId] = useState(null);
+
+  // ✅ usuario real desde sesión
+  const [userId, setUserId] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   const [mostrarPanel, setMostrarPanel] = useState(true);
 
@@ -37,9 +42,6 @@ export default function Interacciones() {
   const location = useLocation();
   const navigate = useNavigate();
   const scrollRef = useRef(null);
-
-  // ⚠️ MOCK: sustituir por tu auth real
-  const MOCK_USER_ID = "681cd8217918fbc4fc7a626f";
 
   const isMobile = useCallback(() => {
     return typeof window !== "undefined" && window.innerWidth <= 640;
@@ -116,15 +118,30 @@ export default function Interacciones() {
     }
   }, [currentChatMessages]);
 
+  // ✅ 1) Cargar usuario desde sesión (demo o CAS)
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const me = await getCurrentUser();
+        if (me?.authenticated && me?.user?.id) setUserId(me.user.id);
+        else setUserId(null);
+      } catch {
+        setUserId(null);
+      } finally {
+        setAuthChecked(true);
+      }
+    };
+    loadUser();
+  }, []);
+
   const fetchSidebarInteractions = useCallback(async () => {
-    if (!MOCK_USER_ID || ejerciciosDisponibles.length === 0) return;
+    if (!userId || ejerciciosDisponibles.length === 0) return;
 
     try {
-      const res = await axios.get(
-        `/api/interacciones/user/${MOCK_USER_ID}`
-      );
+      const res = await api.get(`/api/interacciones/user/${userId}`);
+      const lista = Array.isArray(res.data) ? res.data : [];
 
-      const interactionsWithDetails = (res.data || []).map((interaccion) => {
+      const interactionsWithDetails = lista.map((interaccion) => {
         const ej = ejerciciosDisponibles.find((e) => e._id === interaccion.ejercicio_id);
         return {
           id: interaccion._id,
@@ -140,19 +157,17 @@ export default function Interacciones() {
       console.error("Error cargando interacciones para el sidebar:", error);
       setSidebarInteractions([]);
     }
-  }, [ejerciciosDisponibles, MOCK_USER_ID]);
+  }, [ejerciciosDisponibles, userId]);
 
   const finalizarEjercicioYRedirigir = useCallback(
     async (resueltoALaPrimera = false) => {
       const ej = ejerciciosDisponibles.find((e) => e._id === ejercicioActualId);
-      if (!ej?._id || !MOCK_USER_ID || !currentInteraccionId) {
-        return navigate("/dashboard");
-      }
+      if (!ej?._id || !userId || !currentInteraccionId) return navigate("/dashboard");
 
       setTimeout(async () => {
         try {
-          await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/resultados/finalizar`, {
-            userId: MOCK_USER_ID,
+          await api.post("/api/resultados/finalizar", {
+            userId,
             exerciseId: ej._id,
             interaccionId: currentInteraccionId,
             resueltoALaPrimera,
@@ -164,15 +179,17 @@ export default function Interacciones() {
         }
       }, 2000);
     },
-    [ejercicioActualId, currentInteraccionId, navigate, ejerciciosDisponibles]
+    [ejercicioActualId, currentInteraccionId, navigate, ejerciciosDisponibles, userId]
   );
 
   // ===== Inicialización (URL / localStorage / fallback) =====
   useEffect(() => {
     const fetchAndInitialize = async () => {
       try {
-        const res = await axios.get( "/api/ejercicios");
-        const ejercicios = res.data || [];
+        if (!authChecked) return;
+
+        const res = await api.get("/api/ejercicios");
+        const ejercicios = Array.isArray(res.data) ? res.data : [];
         setEjerciciosDisponibles(ejercicios);
 
         const queryParams = new URLSearchParams(location.search);
@@ -189,12 +206,10 @@ export default function Interacciones() {
         // 1) interaccionId en URL
         if (interaccionIdFromUrl) {
           try {
-            const interaccionRes = await axios.get(
-              `/api/interacciones/${interaccionIdFromUrl}`
-            );
-            newCurrentInteraccionId = interaccionRes.data._id;
-            newCurrentExerciseId = interaccionRes.data.ejercicio_id;
-            loadedMessages = interaccionRes.data.conversacion || [];
+            const interaccionRes = await api.get(`/api/interacciones/${interaccionIdFromUrl}`);
+            newCurrentInteraccionId = interaccionRes.data?._id || null;
+            newCurrentExerciseId = interaccionRes.data?.ejercicio_id || null;
+            loadedMessages = interaccionRes.data?.conversacion || [];
           } catch (error) {
             console.warn("Interacción URL inválida:", error);
           }
@@ -203,12 +218,10 @@ export default function Interacciones() {
         // 2) interaccionId en localStorage
         if (!newCurrentInteraccionId && interaccionIdFromLocalStorage) {
           try {
-            const interaccionRes = await axios.get(
-              `/api/interacciones/${interaccionIdFromLocalStorage}`
-            );
-            newCurrentInteraccionId = interaccionRes.data._id;
-            newCurrentExerciseId = interaccionRes.data.ejercicio_id;
-            loadedMessages = interaccionRes.data.conversacion || [];
+            const interaccionRes = await api.get(`/api/interacciones/${interaccionIdFromLocalStorage}`);
+            newCurrentInteraccionId = interaccionRes.data?._id || null;
+            newCurrentExerciseId = interaccionRes.data?.ejercicio_id || null;
+            loadedMessages = interaccionRes.data?.conversacion || [];
           } catch (error) {
             console.warn("Interacción localStorage inválida:", error);
             localStorage.removeItem("currentInteraccionId");
@@ -216,12 +229,10 @@ export default function Interacciones() {
           }
         }
 
-        // 3) exerciseId en URL → busca interacción existente
-        if (!newCurrentInteraccionId && idFromUrl && ejercicios.some((e) => e._id === idFromUrl)) {
+        // 3) exerciseId en URL → busca interacción existente (solo si hay userId)
+        if (!newCurrentInteraccionId && userId && idFromUrl && ejercicios.some((e) => e._id === idFromUrl)) {
           try {
-            const existing = await axios.get(
-              `/api/interacciones/byExerciseAndUser/${idFromUrl}/${MOCK_USER_ID}`
-            );
+            const existing = await api.get(`/api/interacciones/byExerciseAndUser/${idFromUrl}/${userId}`);
             if (existing.data && existing.data._id) {
               newCurrentInteraccionId = existing.data._id;
               newCurrentExerciseId = idFromUrl;
@@ -234,16 +245,17 @@ export default function Interacciones() {
           }
         }
 
-        // 4) exerciseId en localStorage
+        // 4) exerciseId en localStorage (solo si hay userId)
         if (
           !newCurrentInteraccionId &&
           !newCurrentExerciseId &&
+          userId &&
           exerciseIdFromLocalStorage &&
           ejercicios.some((e) => e._id === exerciseIdFromLocalStorage)
         ) {
           try {
-            const existing = await axios.get(
-              `/api/interacciones/byExerciseAndUser/${exerciseIdFromLocalStorage}/${MOCK_USER_ID}`
+            const existing = await api.get(
+              `/api/interacciones/byExerciseAndUser/${exerciseIdFromLocalStorage}/${userId}`
             );
             if (existing.data && existing.data._id) {
               newCurrentInteraccionId = existing.data._id;
@@ -264,7 +276,7 @@ export default function Interacciones() {
 
         setEjercicioActualId(newCurrentExerciseId);
         setCurrentInteraccionId(newCurrentInteraccionId);
-        setCurrentChatMessages(loadedMessages);
+        setCurrentChatMessages(Array.isArray(loadedMessages) ? loadedMessages : []);
       } catch (err) {
         console.error("Error general cargando ejercicios/interacciones:", err);
       } finally {
@@ -273,7 +285,7 @@ export default function Interacciones() {
     };
 
     fetchAndInitialize();
-  }, [location.search, MOCK_USER_ID]);
+  }, [location.search, userId, authChecked]);
 
   // Persist ejercicioActualId en localStorage y URL
   useEffect(() => {
@@ -311,15 +323,14 @@ export default function Interacciones() {
       setShowPlusPanel(false);
 
       try {
-        const interaccionRes = await axios.get(
-          `/api/interacciones/${interaccion.id}`
-        );
-        setCurrentChatMessages(interaccionRes.data.conversacion || []);
+        const interaccionRes = await api.get(`/api/interacciones/${interaccion.id}`);
+        const conv = Array.isArray(interaccionRes.data?.conversacion) ? interaccionRes.data.conversacion : [];
+        setCurrentChatMessages(conv);
+
         navigate(`/interacciones?id=${interaccion.ejercicioId}&interaccionId=${interaccion.id}`, {
           replace: true,
         });
 
-        // ✅ MODO MÓVIL tipo WhatsApp: al entrar al chat, colapsa lista
         if (isMobile()) setMostrarPanel(false);
       } catch (error) {
         console.error("Error al cargar interacción del sidebar:", error);
@@ -339,9 +350,7 @@ export default function Interacciones() {
       if (!window.confirm("¿Eliminar esta interacción? Se borrará permanentemente.")) return;
 
       try {
-        await axios.delete(
-          `${import.meta.env.VITE_BACKEND_URL}/api/interacciones/${interaccionIdToDelete}`
-        );
+        await api.delete(`/api/interacciones/${interaccionIdToDelete}`);
 
         await fetchSidebarInteractions();
 
@@ -368,7 +377,6 @@ export default function Interacciones() {
       setQueryEj("");
       navigate(`/interacciones?id=${exerciseId}`, { replace: true });
 
-      // ✅ MÓVIL: al elegir ejercicio, entra al chat y colapsa lista
       if (isMobile()) setMostrarPanel(false);
     },
     [navigate, isMobile]
@@ -377,6 +385,11 @@ export default function Interacciones() {
   const enviarMensaje = useCallback(async () => {
     const ej = ejerciciosDisponibles.find((e) => e._id === ejercicioActualId);
     if (!nuevoMensaje.trim() || !ej || isSendingMessage) return;
+
+    if (!userId) {
+      alert("No hay sesión iniciada. Vuelve a Login y entra en modo demo (o CAS cuando esté disponible).");
+      return;
+    }
 
     setIsSendingMessage(true);
 
@@ -389,24 +402,25 @@ export default function Interacciones() {
       let response;
 
       if (esPrimerMensaje) {
-        response = await axios.post(
-          `${import.meta.env.VITE_BACKEND_URL}/api/ollama/chat/start-exercise`,
-          { userId: MOCK_USER_ID, exerciseId: ej._id, userMessage: userMessageContent }
-        );
-        setCurrentInteraccionId(response.data.interaccionId);
+        response = await api.post("/api/ollama/chat/start-exercise", {
+          userId,
+          exerciseId: ej._id,
+          userMessage: userMessageContent,
+        });
+        setCurrentInteraccionId(response.data?.interaccionId || null);
         fetchSidebarInteractions();
       } else {
-        response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/ollama/chat/message`, {
+        response = await api.post("/api/ollama/chat/message", {
           interaccionId: currentInteraccionId,
           userMessage: userMessageContent,
         });
       }
 
-      const { fullHistory } = response.data;
-      setCurrentChatMessages(fullHistory || []);
+      const fullHistory = response.data?.fullHistory;
+      setCurrentChatMessages(Array.isArray(fullHistory) ? fullHistory : []);
 
-      if (fullHistory?.length > 0) {
-        const ultimo = fullHistory[fullHistory.length - 1].content
+      if (Array.isArray(fullHistory) && fullHistory.length > 0) {
+        const ultimo = String(fullHistory[fullHistory.length - 1]?.content || "")
           .toLowerCase()
           .replace(".", "");
         const terminado = PALABRAS_CLAVE_FIN.some((k) => ultimo.includes(k.toLowerCase()));
@@ -427,12 +441,29 @@ export default function Interacciones() {
     nuevoMensaje,
     isSendingMessage,
     currentInteraccionId,
-    MOCK_USER_ID,
+    userId,
     fetchSidebarInteractions,
     finalizarEjercicioYRedirigir,
   ]);
 
   // ===== Render =====
+  if (!authChecked) {
+    return (
+      <div className="interacciones-cargando">
+        <p>Comprobando sesión…</p>
+      </div>
+    );
+  }
+
+  if (!userId) {
+    return (
+      <div className="interacciones-cargando">
+        <p>No hay sesión iniciada.</p>
+        <p>Vuelve a Login y entra en modo demo (o CAS cuando esté disponible).</p>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="interacciones-cargando">
@@ -457,9 +488,7 @@ export default function Interacciones() {
     );
   }
 
-  const imgSrc = ejercicioActual.imagen
-    ? `${import.meta.env.VITE_BACKEND_URL}/static/${ejercicioActual.imagen}`
-    : "/placeholder-ejercicio.png";
+  const imgSrc = ejercicioActual.imagen ? `/static/${ejercicioActual.imagen}` : "/placeholder-ejercicio.png";
 
   return (
     <div className="interacciones-scope">
@@ -482,7 +511,6 @@ export default function Interacciones() {
             </div>
           </div>
 
-          {/* ✅ Panel “Nuevo chat” claramente distinto */}
           {showPlusPanel && (
             <div className="plus-panel">
               <div className="plus-panel-header">
@@ -531,7 +559,6 @@ export default function Interacciones() {
             </div>
           )}
 
-          {/* ✅ Lista SOLO de interacciones (estilo WhatsApp: filas) */}
           <div className="sidebar-list">
             {sidebarInteractions.length > 0 ? (
               sidebarInteractions.map((i) => (
@@ -562,18 +589,14 @@ export default function Interacciones() {
                 </div>
               ))
             ) : (
-              <div className="sidebar-empty">
-                No hay interacciones guardadas. Pulsa “＋” para empezar.
-              </div>
+              <div className="sidebar-empty">No hay interacciones guardadas. Pulsa “＋” para empezar.</div>
             )}
           </div>
 
-          {/* resizer (en móvil queda inofensivo por CSS) */}
           <div className="sidebar-resizer" onMouseDown={startResizing} />
         </aside>
       )}
 
-      {/* ✅ botón colapsar/expandir (en móvil se comporta como WhatsApp) */}
       <button
         onClick={() => setMostrarPanel((v) => !v)}
         className={`sidebar-collapse ${mostrarPanel ? "sidebar-collapse-open" : "sidebar-collapse-closed"}`}
