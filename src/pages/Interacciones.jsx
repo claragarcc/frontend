@@ -17,8 +17,13 @@ export default function Interacciones() {
   const [userId, setUserId] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
 
+  // ✅ Vista móvil real (no función)
+  const [isMobileView, setIsMobileView] = useState(false);
+
+  // ✅ Panel (lista chats)
   const [mostrarPanel, setMostrarPanel] = useState(true);
 
+  // Sidebar width (solo desktop)
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const savedWidth = localStorage.getItem("sidebarWidth");
     return savedWidth ? parseInt(savedWidth, 10) : 320;
@@ -30,7 +35,7 @@ export default function Interacciones() {
 
   const [sidebarInteractions, setSidebarInteractions] = useState([]);
 
-  // ✅ “Nuevo chat” (panel del +)
+  // “Nuevo chat”
   const [showPlusPanel, setShowPlusPanel] = useState(false);
   const [queryEj, setQueryEj] = useState("");
 
@@ -43,9 +48,25 @@ export default function Interacciones() {
   const navigate = useNavigate();
   const scrollRef = useRef(null);
 
-  const isMobile = useCallback(() => {
-    return typeof window !== "undefined" && window.innerWidth <= 640;
+  // ✅ Detectar móvil y actualizar en resize
+  useEffect(() => {
+    const compute = () => setIsMobileView(window.innerWidth <= 640);
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
   }, []);
+
+  // ✅ Inicializa mostrarPanel según dispositivo (en desktop sí, en móvil depende)
+  useEffect(() => {
+    if (isMobileView) {
+      // En móvil: por defecto mostramos lista SOLO si no hay ejercicio seleccionado aún
+      // (luego lo ajustamos también al leer la URL)
+      // No forzamos aquí, lo decide la init.
+    } else {
+      // En escritorio: lista visible por defecto
+      setMostrarPanel(true);
+    }
+  }, [isMobileView]);
 
   const ejercicioActual = useMemo(() => {
     return ejerciciosDisponibles.find((e) => e._id === ejercicioActualId) || null;
@@ -74,11 +95,12 @@ export default function Interacciones() {
     setModalImageAlt("");
   }, []);
 
-  // ===== Resize sidebar =====
+  // ===== Resize sidebar (solo desktop) =====
   const startResizing = useCallback((e) => {
+    if (isMobileView) return;
     setIsResizing(true);
     e.preventDefault();
-  }, []);
+  }, [isMobileView]);
 
   const stopResizing = useCallback(() => {
     setIsResizing(false);
@@ -118,7 +140,7 @@ export default function Interacciones() {
     }
   }, [currentChatMessages]);
 
-  // ✅ 1) Cargar usuario desde sesión (demo o CAS)
+  // ✅ 1) Cargar usuario desde sesión
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -229,7 +251,7 @@ export default function Interacciones() {
           }
         }
 
-        // 3) exerciseId en URL → busca interacción existente (solo si hay userId)
+        // 3) exerciseId en URL → busca interacción existente
         if (!newCurrentInteraccionId && userId && idFromUrl && ejercicios.some((e) => e._id === idFromUrl)) {
           try {
             const existing = await api.get(`/api/interacciones/byExerciseAndUser/${idFromUrl}/${userId}`);
@@ -245,7 +267,7 @@ export default function Interacciones() {
           }
         }
 
-        // 4) exerciseId en localStorage (solo si hay userId)
+        // 4) exerciseId en localStorage
         if (
           !newCurrentInteraccionId &&
           !newCurrentExerciseId &&
@@ -269,7 +291,7 @@ export default function Interacciones() {
           }
         }
 
-        // Fallback: primer ejercicio
+        // Fallback
         if (!newCurrentExerciseId && ejercicios.length > 0) {
           newCurrentExerciseId = ejercicios[0]._id;
         }
@@ -286,6 +308,23 @@ export default function Interacciones() {
 
     fetchAndInitialize();
   }, [location.search, userId, authChecked]);
+
+  // ✅ Ajuste clave móvil: si vienes desde Ejercicios con id/interaccionId, abre CHAT (no lista)
+  useEffect(() => {
+    if (!isMobileView) return;
+
+    const queryParams = new URLSearchParams(location.search);
+    const idFromUrl = queryParams.get("id");
+    const interaccionIdFromUrl = queryParams.get("interaccionId");
+
+    // Si hay un objetivo claro, mostramos chat
+    if (idFromUrl || interaccionIdFromUrl) {
+      setMostrarPanel(false);
+    } else {
+      // Si no hay nada seleccionado aún, muestra lista
+      setMostrarPanel(true);
+    }
+  }, [isMobileView, location.search]);
 
   // Persist ejercicioActualId en localStorage y URL
   useEffect(() => {
@@ -306,7 +345,7 @@ export default function Interacciones() {
     else localStorage.removeItem("currentInteraccionId");
   }, [currentInteraccionId]);
 
-  // Refresca sidebar cuando ya hay ejercicios
+  // Refresca sidebar
   useEffect(() => {
     if (!loading && ejerciciosDisponibles.length > 0) {
       fetchSidebarInteractions();
@@ -314,7 +353,6 @@ export default function Interacciones() {
   }, [loading, ejerciciosDisponibles, currentInteraccionId, fetchSidebarInteractions]);
 
   // ===== Acciones =====
-
   const seleccionarInteraccion = useCallback(
     async (interaccion) => {
       setEjercicioActualId(interaccion.ejercicioId);
@@ -331,7 +369,8 @@ export default function Interacciones() {
           replace: true,
         });
 
-        if (isMobile()) setMostrarPanel(false);
+        // ✅ En móvil, al elegir chat -> ir a chat
+        if (isMobileView) setMostrarPanel(false);
       } catch (error) {
         console.error("Error al cargar interacción del sidebar:", error);
         alert("No se pudo cargar la conversación. Puede que haya sido eliminada.");
@@ -342,7 +381,7 @@ export default function Interacciones() {
         setLoading(false);
       }
     },
-    [navigate, isMobile]
+    [navigate, isMobileView]
   );
 
   const borrarInteraccion = useCallback(
@@ -351,7 +390,6 @@ export default function Interacciones() {
 
       try {
         await api.delete(`/api/interacciones/${interaccionIdToDelete}`);
-
         await fetchSidebarInteractions();
 
         if (currentInteraccionId === interaccionIdToDelete) {
@@ -377,9 +415,10 @@ export default function Interacciones() {
       setQueryEj("");
       navigate(`/interacciones?id=${exerciseId}`, { replace: true });
 
-      if (isMobile()) setMostrarPanel(false);
+      // ✅ En móvil, al empezar chat -> ir a chat
+      if (isMobileView) setMostrarPanel(false);
     },
-    [navigate, isMobile]
+    [navigate, isMobileView]
   );
 
   const enviarMensaje = useCallback(async () => {
@@ -492,12 +531,27 @@ export default function Interacciones() {
 
   return (
     <div className="interacciones-scope">
+      {/* ===== LISTA (sidebar) ===== */}
       {mostrarPanel && (
-        <aside className="interacciones-sidebar" style={{ width: `${sidebarWidth}px` }}>
+        <aside
+          className="interacciones-sidebar"
+          style={{ width: isMobileView ? "100%" : `${sidebarWidth}px` }}
+        >
           <div className="interacciones-sidebar-header">
             <h2 className="interacciones-sidebar-title">Chats</h2>
 
             <div className="sidebar-actions">
+              {/* ✅ En móvil: botón cerrar lista (volver al chat) */}
+              {isMobileView && (
+                <button
+                  className="btn-icon"
+                  title="Volver al chat"
+                  onClick={() => setMostrarPanel(false)}
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              )}
+
               <button
                 className="btn-icon"
                 title={showPlusPanel ? "Cerrar Nuevo chat" : "Nuevo chat"}
@@ -593,20 +647,26 @@ export default function Interacciones() {
             )}
           </div>
 
-          <div className="sidebar-resizer" onMouseDown={startResizing} />
+          {/* Resizer solo desktop */}
+          {!isMobileView && <div className="sidebar-resizer" onMouseDown={startResizing} />}
         </aside>
       )}
 
-      <button
-        onClick={() => setMostrarPanel((v) => !v)}
-        className={`sidebar-collapse ${mostrarPanel ? "sidebar-collapse-open" : "sidebar-collapse-closed"}`}
-        title={mostrarPanel ? "Contraer lista" : "Volver a lista"}
-      >
-        {mostrarPanel ? "‹" : "›"}
-      </button>
-
+      {/* ===== CHAT ===== */}
       <main className="chat-wrap">
         <div className="chat-top">
+          {/* ✅ Botón claro en móvil para abrir lista (tipo WhatsApp) */}
+          {isMobileView && !mostrarPanel && (
+            <button
+              className="mobile-open-chats"
+              onClick={() => setMostrarPanel(true)}
+              title="Ver chats"
+              type="button"
+            >
+              Chats
+            </button>
+          )}
+
           <img
             src={imgSrc}
             alt={ejercicioActual.titulo || "Ejercicio"}
@@ -660,6 +720,7 @@ export default function Interacciones() {
         </div>
       </main>
 
+      {/* Modal imagen */}
       {showImageModal && (
         <div className="img-modal-backdrop" onClick={closeImageModal}>
           <div className="img-modal" onClick={(e) => e.stopPropagation()}>

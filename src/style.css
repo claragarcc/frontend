@@ -411,25 +411,23 @@ input:focus, textarea:focus, select:focus {
    
 /* =========================================================
    PANTALLA: HOME (Home.jsx)
-  
    ========================================================= */
 
-/* Fondo general de Home */
+/* Scope general: evita scroll lateral */
 .home-scope {
   background-color: var(--color-bg-app);
+  overflow-x: hidden;
 }
 
-/* Cabecera con “marca” roja arriba (sin degradados raros) */
+/* Cabecera */
 .main-header {
   position: relative;
   text-align: center;
-  padding: 1.8rem 1.5rem 1.2rem; /* menos aire */
+  padding: 1.8rem 1.5rem 1.2rem;
   background-color: var(--color-bg-app);
   border-bottom: 1px solid var(--color-border);
 }
 
-
-/* Título + micro detalle rojo (sutil, no infantil) */
 .main-title {
   font-size: 2.7rem;
   font-weight: 600;
@@ -445,7 +443,7 @@ input:focus, textarea:focus, select:focus {
   height: 4px;
   margin: 0.85rem auto 0;
   border-radius: 999px;
-  background-color: var(--color-primary)
+  background-color: var(--color-primary);
 }
 
 .main-subtitle {
@@ -458,13 +456,17 @@ input:focus, textarea:focus, select:focus {
   line-height: 1.55;
 }
 
-/* Contenedor split: estructura, no “planchas” */
+/* Contenedor del split */
 .home-split-wrap {
-  padding: 1.25rem 1.5rem 2rem;
+  padding: 1.25rem 1rem 2rem; /* un pelín menos en móvil */
   background-color: var(--color-bg-app);
 }
 
 .home-split {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column; /* ✅ móvil: columna */
   border-radius: var(--radius-lg);
   overflow: hidden;
   border: 1px solid var(--color-border);
@@ -472,35 +474,29 @@ input:focus, textarea:focus, select:focus {
   background-color: var(--color-bg-surface);
 }
 
-/* Paneles: menos altura, menos padding */
+/* Panel */
 .split-panel {
   width: 100%;
-  min-height: 38vh;            /* ✅ baja MUCHO el aire */
-  padding: 2rem 1.8rem;        /* ✅ baja padding */
+  min-height: auto;          /* ✅ en móvil no forces vh */
+  padding: 1.6rem 1.25rem;   /* ✅ más compacto */
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
-
-  transition: transform 0.22s ease, box-shadow 0.22s ease, width 0.5s ease-in-out;
+  text-decoration: none;     /* ✅ para Link */
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
 }
 
-/* Activo */
+/* Activo / desactivado */
 .split-panel.bg-slate-50 {
   background-color: var(--color-bg-surface) !important;
   color: var(--color-text-main) !important;
 }
 
-/* Desactivado: gris uniforme (sin rayas / sin capa rara) */
 .split-panel.bg-slate-200 {
   background-color: var(--color-bg-disabled) !important;
   color: rgba(0,0,0,0.55) !important;
-}
-
-/* Separador */
-.split-panel.border-slate-200 {
-  border-color: var(--color-border) !important;
 }
 
 /* Contenido */
@@ -510,10 +506,11 @@ input:focus, textarea:focus, select:focus {
   flex-direction: column;
   align-items: center;
   padding: 0.25rem;
+  max-width: 42rem; /* ✅ evita que se “estire raro” */
 }
 
 .panel-title {
-  font-size: 2.05rem;
+  font-size: 1.85rem; /* ✅ un poco menos en móvil */
   font-weight: 600;
   letter-spacing: -0.02em;
   margin: 0.85rem 0 0;
@@ -521,13 +518,13 @@ input:focus, textarea:focus, select:focus {
 
 .panel-subtitle {
   margin-top: 0.75rem;
-  font-size: 1.05rem;
+  font-size: 1.02rem;
   line-height: 1.7;
   max-width: 30rem;
   color: var(--color-text-muted);
 }
 
-/* Acento rojo lateral SOLO al hover (dinámico, pero sobrio) */
+/* Acento lateral: SOLO donde haya hover real */
 .split-panel::before {
   content: "";
   position: absolute;
@@ -540,76 +537,90 @@ input:focus, textarea:focus, select:focus {
   opacity: 0.95;
 }
 
-/* Iconos: más “vivos” pero sin inventos */
+/* Iconos */
 .split-content .h-16 {
   transition: transform 0.22s ease, color 0.22s ease, opacity 0.22s ease;
 }
 
-/* Hover solo en el clicable */
-.split-panel:not(.cursor-not-allowed):hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.split-panel:not(.cursor-not-allowed):hover::before {
-  width: 6px;
-}
-
-.split-panel:not(.cursor-not-allowed):hover .split-content .h-16 {
-  color: var(--color-primary) !important;
-  transform: translateY(-2px) scale(1.03);
-}
-
-/* CTA: aparece al hover (más “guay”), pero sin parecer otra web */
+/* CTA: ✅ visible SIEMPRE por defecto (móvil incluido) */
 .cta-button,
 .cta-button-disabled {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  margin-top: 1.6rem;
-  padding: 0.75rem 1.4rem;
+  margin-top: 1.4rem;
+  padding: 0.8rem 1.4rem;
   border-radius: 9999px;
   font-weight: 600;
+  width: 100%;              /* ✅ móvil: botón ancho, fácil de pulsar */
+  max-width: 22rem;
 }
 
+/* CTA activo */
 .cta-button {
   background-color: var(--color-text-main);
   color: var(--color-bg-surface);
-  opacity: 0;
-  transform: translateY(10px);
-  transition: opacity 0.22s ease, transform 0.22s ease, background-color 0.2s ease;
+  opacity: 1;               /* ✅ SIEMPRE visible */
+  transform: translateY(0); /* ✅ sin animación de “aparecer” */
+  transition: background-color 0.2s ease, transform 0.12s ease;
 }
 
-.split-panel:not(.cursor-not-allowed):hover .cta-button {
-  opacity: 1;
-  transform: translateY(0);
+.cta-button:active {
+  transform: scale(0.98);
 }
 
-.cta-button:hover {
-  background-color: var(--color-primary);
+.cta-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
 }
 
+/* CTA desactivado */
 .cta-button-disabled {
   background-color: rgba(0,0,0,0.10);
   color: rgba(0,0,0,0.55);
   border: 1px solid rgba(0,0,0,0.10);
 }
 
-/* Escritorio: menos altura y expansión suave */
+/* Desktop: fila y efecto hover elegante */
 @media (min-width: 768px) {
+  .home-split-wrap {
+    padding: 1.25rem 1.5rem 2rem;
+  }
+
+  .home-split {
+    flex-direction: row; /* ✅ escritorio: fila */
+  }
+
   .split-panel {
     width: 50%;
-    min-height: 56vh; /* ✅ evita “pantalla vacía” */
+    min-height: 56vh;
+    padding: 2rem 1.8rem;
   }
 
-  .split-panel:not(.cursor-not-allowed):hover {
-    width: 55%;
-  }
+  /* Hover solo si tiene sentido */
+  @media (hover: hover) and (pointer: fine) {
+    .split-panel:not(.cursor-not-allowed):hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
 
-  .split-panel:not(.cursor-not-allowed):hover + .split-panel {
-    width: 45%;
+    .split-panel:not(.cursor-not-allowed):hover::before {
+      width: 6px;
+    }
+
+    .split-panel:not(.cursor-not-allowed):hover .split-content .h-16 {
+      color: var(--color-primary) !important;
+      transform: translateY(-2px) scale(1.03);
+    }
+
+    .cta-button:hover {
+      background-color: var(--color-primary);
+    }
   }
 }
+
+
 
 
 
@@ -850,274 +861,257 @@ input:focus, textarea:focus, select:focus {
 
 
 /* =========================================================
-   EJERCICIOS (EjerciciosPage.jsx) – MISMO ESTILO, MÁS LIMPIO
-   - Mantiene look sobrio (como tu versión original)
-   - Arregla alineaciones / columnas
-   - Rojo mínimo (solo guiño de marca)
+   EJERCICIOS – Responsive tabla -> tarjetas en móvil
    ========================================================= */
 
-/* Fondo y márgenes: menos aire pero sin agobiar */
-.busqueda {
-  background-color: var(--color-bg-app);
-  padding: 1.6rem 1.4rem 2.2rem;
-  min-height: calc(100vh - 4rem);
+.ejercicios-scope {
+  overflow-x: hidden;
 }
 
-/* Título: legible, sin “negro ultra” ni peso excesivo */
-.busqueda .titulo {
-  font-size: 2.05rem;
-  font-weight: 850;
-  letter-spacing: -0.02em;
-  margin-bottom: 1.2rem;
-}
-
-/* Detalle rojo MUY sutil bajo el título (sin rayas laterales raras) */
-.busqueda .titulo.centrado {
-  position: relative;
-}
-.busqueda .titulo.centrado::after {
-  content: "";
-  display: block;
-  width: 92px;
-  height: 3px;
-  margin: 0.75rem auto 0;
-  border-radius: 999px;
-  background: var(--color-primary);
-  opacity: 0.9;
-}
-
-/* =========================
-   Caja de tabla (wrapper)
-   ========================= */
-
-/* Tu wrapper actual: "w-full max-w-4xl mx-auto mt-8 border ... rounded-lg overflow-hidden"
-   Lo refinamos: bordes más coherentes y menos “gordos”, sombra suave */
-.busqueda .max-w-4xl {
-  border-radius: var(--radius-lg);
+/* Contenedor lista */
+.ej-list {
   border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  background: var(--color-bg-surface);
   overflow: hidden;
 }
 
-/* Cabecera de la tabla (la fila gris) */
-.busqueda .max-w-4xl > .flex.items-center.bg-gray-100 {
-  background-color: rgba(0,0,0,0.03);
-  border-bottom: 1px solid var(--color-border);
-  padding-top: 0.85rem;
-  padding-bottom: 0.85rem;
+/* Cabecera (solo desktop) */
+.ej-head {
+  display: none;
 }
 
-/* Que los “títulos de columna” no se vean infantiles ni enormes */
-.busqueda .max-w-4xl > .flex.items-center.bg-gray-100 {
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  color: rgba(0,0,0,0.55);
+.ej-body {
+  display: block;
 }
 
-/* =========================
-   Filas (cada ejercicio)
-   ========================= */
+.ej-item {
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+.ej-item:first-child {
+  border-top: 0;
+}
 
-/* La fila principal que ahora tienes:
-   <div className="flex items-center w-full bg-white hover:bg-gray-50 ... pr-4"> */
-.busqueda .max-w-4xl .divide-y > div > div.flex.items-center.w-full {
-  background-color: var(--color-bg-surface);
+/* Fila principal */
+.ej-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 0.75rem 0.75rem;
+  background: var(--color-bg-surface);
   transition: background-color 0.16s ease;
-  padding-right: 0.25rem; /* evita “bailes” con el ancho */
 }
 
-/* Hover suave (no rojo entero, no raya lateral) */
-.busqueda .max-w-4xl .divide-y > div > div.flex.items-center.w-full:hover {
-  background-color: rgba(231, 38, 33, 0.04); /* rojo muy sutil */
+.ej-row:hover {
+  background: rgba(231, 38, 33, 0.025);
 }
 
-/* Botón del caret (DisclosureButton): tamaño consistente, sin “cuadradotes” */
-.busqueda .max-w-4xl button[aria-expanded] {
+.ej-row-open {
+  background: rgba(0,0,0,0.015);
+}
+
+/* Toggle (caret) */
+.ej-toggle {
   width: 44px;
   height: 44px;
   display: grid;
   place-items: center;
   border-radius: 10px;
+  flex: 0 0 auto;
   transition: background-color 0.16s ease;
 }
-.busqueda .max-w-4xl button[aria-expanded]:hover {
-  background-color: rgba(0,0,0,0.05);
+.ej-toggle:hover {
+  background: rgba(0,0,0,0.05);
 }
-.busqueda .max-w-4xl button[aria-expanded]:focus-visible {
+.ej-toggle:focus-visible {
   outline: 3px solid rgba(231, 38, 33, 0.20);
   outline-offset: 2px;
 }
 
-/* Zona clicable central: alineación y cortes correctos */
-.busqueda .max-w-4xl .divide-y > div > div.flex.items-center.w-full .flex-1.cursor-pointer {
-  align-items: center;
-  padding-top: 0.9rem;
-  padding-bottom: 0.9rem;
+/* Zona central clicable */
+.ej-main {
+  flex: 1 1 auto;
   min-width: 0;
+  cursor: pointer;
+  padding: 0.15rem 0;
 }
 
-/* Título del ejercicio: legible, pero sin negrita agresiva */
-.busqueda .max-w-4xl .divide-y > div > div.flex.items-center.w-full .font-semibold {
-  font-weight: 750; /* menos “mazacote” */
+/* Título (siempre visible) */
+.ej-title {
+  font-weight: 750;
   color: var(--color-text-main);
   letter-spacing: -0.01em;
+  line-height: 1.25;
+  margin-top: 0.15rem;
 }
 
-/* Columnas: evita que “se descuadre” en distintos tamaños */
-.busqueda .max-w-4xl .divide-y > div > div.flex.items-center.w-full .w-48,
-.busqueda .max-w-4xl > .flex.items-center.bg-gray-100 .w-48 {
-  width: 12rem; /* 192px */
-}
-
-/* Alineado del nivel + pill sin ser enorme ni hiper roja */
-.busqueda .max-w-4xl .divide-y > div > div.flex.items-center.w-full .w-24,
-.busqueda .max-w-4xl > .flex.items-center.bg-gray-100 .w-24 {
-  width: 6.25rem; /* 100px */
-}
-
-.busqueda .max-w-4xl .divide-y > div > div.flex.items-center.w-full .bg-rojo.rounded-full {
-  background-color: rgba(0,0,0,0.06) !important; /* sobrio */
-  color: rgba(0,0,0,0.70) !important;
-  font-weight: 800;
-  padding: 0.30rem 0.65rem;
-}
-
-/* Micro guiño rojo SOLO cuando pasas el ratón por la fila */
-.busqueda .max-w-4xl .divide-y > div > div.flex.items-center.w-full:hover .bg-rojo.rounded-full {
-  background-color: rgba(231, 38, 33, 0.12) !important;
-  color: var(--color-text-main) !important;
-}
-
-/* Check de completado: que no cante ni parezca “app de niño” */
-.busqueda .max-w-4xl .divide-y .text-green-500 {
-  color: rgba(0,0,0,0.45) !important; /* discreto */
-  opacity: 0.9;
-}
-
-/* Panel desplegado: que sea limpio y no “tarjetón raro” */
-.busqueda .max-w-4xl .bg-gray-50 {
-  background-color: rgba(0,0,0,0.03) !important;
-}
-.busqueda .max-w-4xl .bg-gray-50 .bg-white {
-  border: 1px solid var(--color-border) !important;
-  box-shadow: none !important;
-  border-radius: var(--radius-md);
-}
-
-/* Imagen del panel: misma estética que el resto */
-.busqueda .max-w-4xl img {
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-}
-
-/* =========================
-   Responsive: evita desalineaciones
-   ========================= */
-
-@media (max-width: 768px) {
-  .busqueda {
-    padding: 1.25rem 1rem 1.8rem;
-  }
-
-  /* Reduce algo el título */
-  .busqueda .titulo {
-    font-size: 1.85rem;
-  }
-
-  /* Ajuste de padding interno para que no “baile” */
-  .busqueda .max-w-4xl > .flex.items-center.bg-gray-100,
-  .busqueda .max-w-4xl .divide-y > div > div.flex.items-center.w-full {
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
-  }
-}
-
-/* =========================================================
-   FIX: panel abierto coherente (sin cambios de fondo raros)
-   ========================================================= */
-
-/* 1) Elimina el fondo gris del DisclosurePanel: todo blanco, como la tabla */
-.busqueda .max-w-4xl .divide-y > div > .bg-gray-50 {
-  background-color: var(--color-bg-surface) !important;
-  border-top: 1px solid rgba(0,0,0,0.06); /* separación limpia */
-}
-
-/* 2) La “caja interior” del panel: sin tarjeta rara, solo bloque ordenado */
-.busqueda .max-w-4xl .divide-y > div > .bg-gray-50 .bg-white {
-  background-color: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  padding: 0.75rem 0.25rem !important; /* compacto, pero elegante */
-}
-
-/* 3) El contenido del panel (enunciado + imagen) que no “flote” */
-.busqueda .max-w-4xl .divide-y > div > .bg-gray-50 .text-sm {
+/* Meta: asignatura · concepto */
+.ej-meta {
+  margin-top: 0.35rem;
+  font-size: 0.92rem;
   color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.ej-meta-sep {
+  opacity: 0.6;
 }
 
-/* 4) Imagen: borde coherente, sin sensación de “tarjeta dentro de tarjeta” */
-.busqueda .max-w-4xl .divide-y > div > .bg-gray-50 img {
+/* En móvil NO mostramos columnas separadas */
+.ej-asig,
+.ej-concept {
+  display: none;
+}
+
+/* Zona derecha: nivel + check */
+.ej-right {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 0 0 auto;
+  padding-left: 0.25rem;
+}
+
+.ej-level-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  background: rgba(0,0,0,0.06);
+  color: rgba(0,0,0,0.70);
+}
+
+.ej-row:hover .ej-level-pill {
+  background: rgba(231, 38, 33, 0.12);
+  color: var(--color-text-main);
+}
+
+/* Check discreto */
+.ej-done {
+  color: rgba(0,0,0,0.45);
+  opacity: 0.95;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Panel desplegable */
+.ej-panel {
+  padding: 0.75rem 1rem 1rem;
+  background: var(--color-bg-surface);
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+
+.ej-panel-block + .ej-panel-block {
+  margin-top: 1rem;
+}
+
+.ej-panel-title {
+  font-weight: 750;
+  color: var(--color-text-main);
+  margin-bottom: 0.35rem;
+}
+
+.ej-panel-text {
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.ej-panel-img {
+  max-width: 100%;
+  height: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  box-shadow: none;
 }
 
-/* =========================================================
-   FIX: hover sin “flash” cuando abres/cierra
-   ========================================================= */
+/* ===== Desktop / tablet: tabla clásica ===== */
+@media (min-width: 640px) {
+  .ej-head {
+    display: grid;
+    grid-template-columns: 44px 1fr 12rem 12rem 6rem 3rem;
+    align-items: center;
+    background: rgba(0,0,0,0.03);
+    border-bottom: 1px solid var(--color-border);
+    padding: 0.85rem 0.75rem;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    color: rgba(0,0,0,0.55);
+    text-transform: uppercase;
+    font-weight: 700;
+    column-gap: 0.5rem;
+  }
 
-/* Hover más discreto (casi imperceptible) */
-.busqueda .max-w-4xl .divide-y > div > div.flex.items-center.w-full:hover {
-  background-color: rgba(231, 38, 33, 0.025) !important;
+  /* La cabecera usa "ej-col ..." (los divs) */
+  .ej-col-toggle { grid-column: 1; }
+  .ej-col-title  { grid-column: 2; }
+  .ej-col-asig   { grid-column: 3; }
+  .ej-col-concept{ grid-column: 4; }
+  .ej-col-level  { grid-column: 5; text-align: center; }
+  .ej-col-done   { grid-column: 6; text-align: center; }
+
+  /* Fila como grid "tabla" */
+  .ej-row {
+    display: grid;
+    grid-template-columns: 44px 1fr 12rem 12rem 6rem 3rem;
+    align-items: center;
+    padding: 0.55rem 0.75rem;
+    column-gap: 0.5rem;
+  }
+
+  /* Cada bloque va a su columna */
+  .ej-toggle { grid-column: 1; }
+
+  .ej-main {
+    grid-column: 2 / 5; /* aquí dentro ponemos título, asig y concepto */
+    display: grid;
+    grid-template-columns: 1fr 12rem 12rem;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0;
+  }
+
+  /* Ocultamos metainfo compacta (solo móvil) */
+  .ej-meta { display: none; }
+
+  /* Mostramos columnas separadas */
+  .ej-asig,
+  .ej-concept {
+    display: block;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* El título que corte bien */
+  .ej-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Derecha: nivel en su columna y check en su columna */
+  .ej-right {
+    grid-column: 5 / 7;
+    display: grid;
+    grid-template-columns: 6rem 3rem;
+    align-items: center;
+    justify-items: center;
+    gap: 0;
+    padding-left: 0;
+  }
+
+  .ej-level-pill { justify-self: center; }
+  .ej-done { justify-self: center; }
 }
 
-/* Si está abierto, NO apliques hover (evita el salto visual)
-   HeadlessUI añade data-headlessui-state="open" al wrapper Disclosure */
-.busqueda .max-w-4xl .divide-y > div[data-headlessui-state="open"] > div.flex.items-center.w-full:hover {
-  background-color: var(--color-bg-surface) !important;
-}
-
-/* Opcional: cuando está abierto, marca sutil con borde inferior, no color */
-.busqueda .max-w-4xl .divide-y > div[data-headlessui-state="open"] > div.flex.items-center.w-full {
-  border-bottom: 1px solid rgba(0,0,0,0.06);
-}
-/* =========================================================
-   Panel abierto = extensión de la fila (sin “recuadro aparte”)
-   ========================================================= */
-
-/* Quita cualquier borde/fondo que lo separe como bloque */
-.busqueda .max-w-4xl .divide-y > div > .bg-gray-50{
-  background: var(--color-bg-surface) !important;
-  border-top: 0 !important;
-  box-shadow: none !important;
-}
-
-/* Quita “caja” interior y alinea el contenido con la tabla */
-.busqueda .max-w-4xl .divide-y > div > .bg-gray-50 .bg-white{
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-}
-
-/* Ajusta el padding del panel para que no parezca tarjeta:
-   - mismo margen lateral que el contenido de la fila
-   - compacto */
-.busqueda .max-w-4xl .divide-y > div > .bg-gray-50{
-  padding: 0.75rem 1rem 1rem !important; /* prueba 0.75/1/1 */
-}
-
-/* Opcional (recomendado): separador SOLO al final del panel, ultra sutil */
-.busqueda .max-w-4xl .divide-y > div > .bg-gray-50{
-  border-bottom: 1px solid rgba(0,0,0,0.06) !important;
-}
-
-/* Y para que al abrir NO quede la fila con borde “extra” raro */
-.busqueda .max-w-4xl .divide-y > div[data-headlessui-state="open"] > div.flex.items-center.w-full{
-  border-bottom: 0 !important;
-}
 
 
 
@@ -1508,8 +1502,11 @@ input:focus, textarea:focus, select:focus {
 
 
 /* =========================================================
-   PANTALLA: INTERACCIONES / CHAT
-   Estilo tipo WhatsApp / ChatGPT + responsive móvil
+   PANTALLA: INTERACCIONES
+   Estilo tipo WhatsApp + responsive móvil
+   - Mantiene estética sobria
+   - Móvil: lista y chat en pantalla completa (no coexistir)
+   - Botón “Chats” en cabecera del chat (solo móvil)
    ========================================================= */
 
 .interacciones-scope{
@@ -1520,7 +1517,10 @@ input:focus, textarea:focus, select:focus {
   overflow: hidden;
 }
 
-/* ===== Sidebar ===== */
+/* =========================================================
+   SIDEBAR (lista de chats)
+   ========================================================= */
+
 .interacciones-sidebar{
   background: var(--color-bg-surface);
   border-right: 1px solid var(--color-border);
@@ -1556,6 +1556,7 @@ input:focus, textarea:focus, select:focus {
   align-items: center;
 }
 
+/* Botones redondos (＋ / cerrar en móvil) */
 .btn-icon{
   width: 38px;
   height: 38px;
@@ -1577,12 +1578,13 @@ input:focus, textarea:focus, select:focus {
 
 .btn-icon:active{ transform: translateY(1px); }
 
-/* ===== Panel “Nuevo chat” ===== */
+/* =========================================================
+   PANEL “NUEVO CHAT” (panel del +)
+   ========================================================= */
+
 .plus-panel{
   padding: 0.85rem;
   border-bottom: 1px solid var(--color-border);
-
-  /* Distinción fuerte pero sobria */
   background: rgba(231,38,33,0.055);
   box-shadow: inset 0 1px 0 rgba(231,38,33,0.35);
 }
@@ -1638,7 +1640,7 @@ input:focus, textarea:focus, select:focus {
   border-radius: 999px;
 }
 
-/* Lista “contactos” */
+/* Lista de ejercicios para “nuevo chat” */
 .plus-list{
   margin-top: 0.75rem;
   display: flex;
@@ -1702,7 +1704,10 @@ input:focus, textarea:focus, select:focus {
   font-style: italic;
 }
 
-/* ===== Lista interacciones (WhatsApp: filas, no tarjetas) ===== */
+/* =========================================================
+   LISTA DE INTERACCIONES (tipo WhatsApp)
+   ========================================================= */
+
 .sidebar-list{
   padding: 0.25rem 0;
   overflow-y: auto;
@@ -1781,10 +1786,12 @@ input:focus, textarea:focus, select:focus {
   cursor: pointer;
   transition: background-color 0.18s ease, color 0.18s ease;
 }
+
 .sidebar-item-trash:hover{
   background: rgba(0,0,0,0.06);
   color: var(--color-text-main);
 }
+
 .sidebar-item-active .sidebar-item-trash:hover{
   background: rgba(231,38,33,0.08);
   color: var(--color-primary);
@@ -1796,7 +1803,7 @@ input:focus, textarea:focus, select:focus {
   font-style: italic;
 }
 
-/* Resizer */
+/* Resizer (desktop) */
 .sidebar-resizer{
   position: absolute;
   right: 0;
@@ -1806,32 +1813,15 @@ input:focus, textarea:focus, select:focus {
   cursor: col-resize;
   background: transparent;
 }
+
 .sidebar-resizer:hover{
   background: rgba(0,0,0,0.04);
 }
 
-/* Botón colapsar (escritorio: centrado; móvil: arriba) */
-.sidebar-collapse{
-  position: absolute;
-  z-index: 30;
-  width: 40px;
-  height: 56px;
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-surface);
-  box-shadow: var(--shadow-sm);
-  cursor: pointer;
-  transition: background-color 0.18s ease, border-color 0.18s ease;
-  top: 50%;
-  transform: translateY(-50%);
-  left: 0;
-}
-.sidebar-collapse:hover{
-  background: rgba(0,0,0,0.02);
-  border-color: rgba(0,0,0,0.14);
-}
+/* =========================================================
+   MAIN CHAT
+   ========================================================= */
 
-/* ===== Main chat ===== */
 .chat-wrap{
   flex: 1;
   display: flex;
@@ -1850,8 +1840,56 @@ input:focus, textarea:focus, select:focus {
   align-items: flex-start;
 }
 
+/* Botón móvil para abrir lista: estilo “volver” integrado (tipo WhatsApp) */
+.mobile-open-chats{
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  height: 40px;
+  padding: 0 0.55rem 0 0.2rem;
+
+  border: 0;
+  background: transparent;
+  color: var(--color-text-main);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+/* Añadimos flecha sin tocar JSX */
+.mobile-open-chats::before{
+  content: "‹";
+  font-size: 1.6rem;
+  line-height: 1;
+  transform: translateY(-1px);
+  color: var(--color-primary);
+}
+
+/* Hover/active suave (en móvil casi no se nota, pero queda bien) */
+.mobile-open-chats:hover{
+  background: rgba(0,0,0,0.04);
+}
+
+.mobile-open-chats:active{
+  background: rgba(0,0,0,0.06);
+}
+
+/* Para que no “compita” con el ejercicio */
+@media (max-width: 640px){
+  .mobile-open-chats{
+    margin-right: 0.15rem;
+    color: var(--color-text-main);
+  }
+}
+
+
 .chat-top-img{
-  width: clamp(110px, 18vw, 220px); /* más grande adaptativo */
+  width: clamp(110px, 18vw, 220px);
   height: auto;
   max-height: 140px;
   border-radius: var(--radius-md);
@@ -1861,6 +1899,7 @@ input:focus, textarea:focus, select:focus {
   cursor: pointer;
   transition: transform 0.18s ease;
 }
+
 .chat-top-img:hover{ transform: scale(1.01); }
 
 .chat-top-text{
@@ -1949,7 +1988,10 @@ input:focus, textarea:focus, select:focus {
   padding: 0.65rem 1.15rem;
 }
 
-/* Modal imagen */
+/* =========================================================
+   MODAL IMAGEN
+   ========================================================= */
+
 .img-modal-backdrop{
   position: fixed;
   inset: 0;
@@ -1981,6 +2023,7 @@ input:focus, textarea:focus, select:focus {
   place-items: center;
   cursor: pointer;
 }
+
 .img-modal-close:hover{ background: rgba(0,0,0,0.8); }
 
 .img-modal img{
@@ -1991,13 +2034,16 @@ input:focus, textarea:focus, select:focus {
   border: 1px solid rgba(255,255,255,0.12);
 }
 
-/* ===== Responsive ===== */
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
 @media (max-width: 600px){
   .plus-list{ max-height: 260px; }
 }
 
 @media (max-width: 640px){
-  /* Sidebar ocupa el 100% cuando está abierto (tipo WhatsApp) */
+  /* ✅ FIX: Sidebar a pantalla completa en móvil */
   .interacciones-sidebar{
     width: 100% !important;
     max-width: 100% !important;
@@ -2006,16 +2052,7 @@ input:focus, textarea:focus, select:focus {
   /* Resizer no molesta en móvil */
   .sidebar-resizer{ display: none; }
 
-  /* Botón de volver a lista arriba */
-  .sidebar-collapse{
-    top: 0.85rem;
-    left: 0;
-    transform: none;
-    height: 42px;
-    width: 42px;
-    border-radius: var(--radius-md);
-  }
-
+  /* Ajustes de cabecera chat para que se vea compacto */
   .chat-top{
     gap: 0.75rem;
     padding: 0.85rem 0.9rem;
@@ -2028,7 +2065,6 @@ input:focus, textarea:focus, select:focus {
 
   .msg{ max-width: 86%; }
 }
-
 
 
 /* =========================================================
