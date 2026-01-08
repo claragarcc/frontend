@@ -10,16 +10,25 @@ export default function ProtectedRoute({ children }) {
 
     async function checkSession() {
       try {
+        setStatus("loading");
+
         const resp = await fetch("/api/auth/me", {
           method: "GET",
-          credentials: "include", // ✅ cookie de sesión
+          credentials: "include",
+          headers: { "Cache-Control": "no-cache" },
         });
 
         if (cancelled) return;
-        setStatus(resp.ok ? "ok" : "no");
-      } catch (e) {
-        if (cancelled) return;
-        setStatus("no");
+
+        if (!resp.ok) {
+          setStatus("no");
+          return;
+        }
+
+        const data = await resp.json().catch(() => null);
+        setStatus(data?.authenticated ? "ok" : "no");
+      } catch {
+        if (!cancelled) setStatus("no");
       }
     }
 
@@ -28,16 +37,12 @@ export default function ProtectedRoute({ children }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+    // ✅ re-check en cada navegación real
+  }, [location.key]);
 
-  if (status === "loading") {
-    return <p className="p-6">Verificando sesión…</p>;
-  }
+  if (status === "loading") return <p className="p-6">Verificando sesión…</p>;
 
-  if (status === "no") {
-    // opcional: guardamos dónde querías entrar para volver después
-    return <Navigate to="/login" replace state={{ from: location }} />;
-  }
+  if (status === "no") return <Navigate to="/login" replace state={{ from: location }} />;
 
   return children;
 }

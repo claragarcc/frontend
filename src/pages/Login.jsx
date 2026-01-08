@@ -1,13 +1,14 @@
 import React, { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
 import { demoLogin } from "../services/auth";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
-  const [demoKey, setDemoKey] = useState("demo");
 
+const from = location.state?.from?.pathname || "/home";
   // CAS real (redirige al backend)
   const handleSSOLogin = useCallback(() => {
     setLoading(true);
@@ -16,23 +17,19 @@ export default function Login() {
   }, []);
 
   // Demo: crea sesión REAL en backend (cookie)
-  const handleDemoLogin = useCallback(async () => {
+   const handleDemoLogin = useCallback(async () => {
     try {
       setLoading(true);
-      const key = (demoKey || "demo").trim() || "demo";
-
-      // crea sesión en backend
-      await demoLogin(key);
-
-      // navega ya con sesión creada
-      navigate("/home", { replace: true });
+      await demoLogin();
+      navigate(from, { replace: true });
     } catch (e) {
       console.error("Demo login error:", e);
       alert("No se pudo iniciar sesión en modo demo. Revisa el backend.");
     } finally {
       setLoading(false);
     }
-  }, [demoKey, navigate]);
+  }, [navigate, from]);
+
 
   return (
     <div className="login-scope">
@@ -44,13 +41,13 @@ export default function Login() {
 
           <p className="login-subtitle">
             Accede mediante autenticación institucional UPV (CAS) o utiliza el modo demo para
-            desarrollo y demostración.
+            desarrollo y pruebas.
           </p>
 
           <div className="login-info">
             <div>
               <strong className="login-strong">Acceso UPV (CAS):</strong>{" "}
-              redirige al sistema de autenticación central y, al volver, el backend crea la sesión.
+              redirige al sistema de autenticación central.
             </div>
             <div style={{ marginTop: "0.5rem" }}>
               <strong className="login-strong">Modo demo:</strong>{" "}
@@ -70,27 +67,6 @@ export default function Login() {
             </button>
 
             <div className="login-divider">O</div>
-
-            <label className="w-full" style={{ display: "block", marginBottom: "0.5rem" }}>
-              <span style={{ fontSize: "0.85rem", color: "var(--color-text-muted)" }}>
-                Clave demo (para distinguir usuarios)
-              </span>
-              <input
-                type="text"
-                value={demoKey}
-                onChange={(e) => setDemoKey(e.target.value)}
-                className="w-full"
-                style={{
-                  marginTop: "0.25rem",
-                  padding: "0.6rem 0.75rem",
-                  borderRadius: "0.6rem",
-                  border: "1px solid #d1d5db",
-                  outline: "none",
-                }}
-                placeholder="ej: clara, juan, prueba123…"
-                disabled={loading}
-              />
-            </label>
 
             <button
               type="button"

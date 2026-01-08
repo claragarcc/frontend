@@ -15,18 +15,24 @@ export default function App() {
 
   return (
     <div className="flex flex-col min-h-screen w-screen bg-white">
-      {/* Navbar solo fuera del login */}
       {!isLoginPage && <Navbar />}
 
       <div className="flex-1">
         <Routes>
-          {/* Entrada: SIEMPRE login */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          {/* ✅ Entrada: intenta ir a Home (si no hay sesión, ProtectedRoute te manda a Login) */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Home />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Pública */}
           <Route path="/login" element={<Login />} />
 
-          {/* Privadas (solo se accede tras login demo o CAS) */}
+          {/* Privadas */}
           <Route
             path="/home"
             element={
@@ -35,7 +41,6 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/busqueda"
             element={
@@ -44,7 +49,6 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/dashboard"
             element={
@@ -53,7 +57,6 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/interacciones"
             element={
@@ -62,7 +65,6 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/ejercicios"
             element={
@@ -72,8 +74,8 @@ export default function App() {
             }
           />
 
-          {/* Catch-all */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          {/* ✅ Catch-all: mejor mandar a "/" (que decidirá login vs home) */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </div>

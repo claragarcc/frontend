@@ -18,7 +18,7 @@ import {
 
 
 const navigation = [
-  { name: 'Inicio', to: '/', icon: HomeIcon },
+  { name: 'Inicio', to: '/home', icon: HomeIcon },
   { name: 'Ejercicios', to: '/ejercicios', icon: BookOpenIcon },
   { name: 'Interacciones', to: '/interacciones', icon: ChatBubbleLeftRightIcon },
   { name: 'Dashboard', to: '/dashboard', icon: ChartBarIcon },
@@ -39,11 +39,11 @@ export default function Navbar() {
             <div className="navbar-inner">
               <div className="navbar-logo">
                 <img
-                  src="src/assets/logotutor.png"
+                  src="/logotutor.png"
                   alt="Logo"
                   className="logo-img"
                 />
-                {/* <img className="logo-img" src="src/assets/logo.png"/> */}
+                {/* <img className="logo-img" src="/logo.png"/> */}
                 <span className="logo-text">Tutor Virtual</span>
               </div>
 
