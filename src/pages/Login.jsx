@@ -9,26 +9,30 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
 const from = location.state?.from?.pathname || "/home";
-  // CAS real (redirige al backend)
-  const handleSSOLogin = useCallback(() => {
-    setLoading(true);
-    const returnTo = encodeURIComponent(window.location.origin + "/home");
-    window.location.href = `/api/auth/cas/login?returnTo=${returnTo}`;
-  }, []);
+ // CAS real (redirige al backend)
+const handleSSOLogin = useCallback(() => {
+  setLoading(true);
+  localStorage.removeItem("tv_demo_enabled"); // ✅ no demo si vas por CAS
+  const returnTo = encodeURIComponent(window.location.origin + "/home");
+  window.location.href = `/api/auth/cas/login?returnTo=${returnTo}`;
+}, []);
 
-  // Demo: crea sesión REAL en backend (cookie)
-   const handleDemoLogin = useCallback(async () => {
-    try {
-      setLoading(true);
-      await demoLogin();
-      navigate(from, { replace: true });
-    } catch (e) {
-      console.error("Demo login error:", e);
-      alert("No se pudo iniciar sesión en modo demo. Revisa el backend.");
-    } finally {
-      setLoading(false);
-    }
-  }, [navigate, from]);
+// Demo: crea sesión REAL en backend (cookie) + marca demo en front
+const handleDemoLogin = useCallback(async () => {
+  try {
+    setLoading(true);
+    await demoLogin();
+
+    localStorage.setItem("tv_demo_enabled", "true"); // ✅ ESTA ES LA CLAVE
+
+    navigate(from, { replace: true });
+  } catch (e) {
+    console.error("Demo login error:", e);
+    alert("No se pudo iniciar sesión en modo demo. Revisa el backend.");
+  } finally {
+    setLoading(false);
+  }
+}, [navigate, from]);
 
 
   return (

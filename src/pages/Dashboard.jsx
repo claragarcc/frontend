@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import {
   BarChart,
@@ -17,40 +17,71 @@ import {
 import { useNavigate } from "react-router-dom";
 
 const initialState = {
-  // ✅ mantenemos lo que ya tienes
   resumenSemanal: {
     ejerciciosCompletados: 0,
     conceptosDistintos: 0,
     rachaDias: 0
   },
-
-  // ✅ reutilizamos tu array actual (aunque lo renombremos visualmente)
-  eficienciaPorConcepto: [], // [{ concepto: 'Ley de Ohm', interacciones: 4 }, ...]
-
+  eficienciaPorConcepto: [],
   ultimaSesion: {
     tituloEjercicio: "",
     analisis: "Completa un ejercicio para ver aquí tu resumen.",
     consejo: "¡Mucho ánimo!"
   },
-
-  // ✅ NUEVO: errores o patrones frecuentes (para que el dashboard “tutorice”)
-  erroresFrecuentes: [
-    // ejemplo de forma:
-    // { etiqueta: "CA_OHM_01", texto: "Confunde tensión e intensidad", veces: 3 }
-  ],
-
-  // ✅ NUEVO: recomendación accionable
+  erroresFrecuentes: [],
   recomendacion: {
     titulo: "",
-    motivo: "Haz un ejercicio para que el tutor pueda recomendarte una práctica personalizada.",
+    motivo:
+      "Haz un ejercicio para que el tutor pueda recomendarte una práctica personalizada.",
     ejercicioId: null,
     concepto: ""
   }
 };
 
+const DEMO_KEY = "tv_demo_enabled";
+
+const demoData = {
+  resumenSemanal: {
+    ejerciciosCompletados: 6,
+    conceptosDistintos: 3,
+    rachaDias: 4
+  },
+  eficienciaPorConcepto: [
+    { concepto: "Ley de Ohm", interacciones: 6 },
+    { concepto: "Potencia eléctrica", interacciones: 5 },
+    { concepto: "Serie / paralelo", interacciones: 4 },
+    { concepto: "Divisor de tensión", interacciones: 3 }
+  ],
+  ultimaSesion: {
+    tituloEjercicio: "Ejercicio 12 · Resistencias en serie",
+    analisis:
+      "Has planteado bien la relación V = I·R, pero te ha costado identificar qué resistencia equivalente usar.",
+    consejo:
+      "Antes de calcular I, escribe R_eq y justifica si es suma (serie) o inversa (paralelo)."
+  },
+  erroresFrecuentes: [
+    { etiqueta: "CA_OHM_01", texto: "Confunde tensión (V) e intensidad (I)", veces: 3 },
+    { etiqueta: "CA_SERPAR_02", texto: "Aplica mal la resistencia equivalente", veces: 2 },
+    { etiqueta: "CA_UNITS_01", texto: "Olvida unidades o prefijos (mA, kΩ)", veces: 2 }
+  ],
+  recomendacion: {
+    titulo: "Refuerza: Resistencia equivalente en serie/paralelo",
+    motivo:
+      "En tus últimas interacciones se repite un error al combinar resistencias. Practica un ejercicio corto guiado.",
+    ejercicioId: "DEMO_EJ_001",
+    concepto: "Serie / paralelo"
+  }
+};
+
 export default function Dashboard() {
-  const [data, setData] = useState(initialState);
-  const [loading, setLoading] = useState(true);
+  // ✅ leer demo ANTES del primer render (evita que arranque axios)
+  const initialIsDemo = localStorage.getItem(DEMO_KEY) === "true";
+
+  const [isDemo] = useState(initialIsDemo);
+  const [data, setData] = useState(
+    initialIsDemo ? { ...initialState, ...demoData } : initialState
+  );
+  const [loading, setLoading] = useState(!initialIsDemo);
 
   const navigate = useNavigate();
 
@@ -59,38 +90,75 @@ export default function Dashboard() {
   const BACKEND = import.meta.env.VITE_BACKEND_URL;
 
   useEffect(() => {
+    let ignore = false;
+
+    // ✅ DEMO: fijamos datos y no hacemos nada más
+    if (isDemo) {
+      setData({ ...initialState, ...demoData });
+      setLoading(false);
+      return () => {
+        ignore = true;
+      };
+    }
+
+    // ✅ REAL
+    setLoading(true);
+
     axios
       .get(`${BACKEND}/api/progreso/${MOCK_USER_ID}`, { withCredentials: true })
-
       .then((res) => {
+        if (ignore) return;
+
+        // ✅ blindaje extra: si alguien activa demo “a mitad”, no pisamos
+        if (localStorage.getItem(DEMO_KEY) === "true") return;
+
         const fullData = { ...initialState, ...(res.data || {}) };
         setData(fullData);
       })
       .catch((error) => {
+        if (ignore) return;
+
+        // ✅ blindaje extra: si alguien activa demo “a mitad”, no pisamos
+        if (localStorage.getItem(DEMO_KEY) === "true") return;
+
         console.error("Error al cargar los datos del progreso:", error);
         setData(initialState);
       })
-      .finally(() => setLoading(false));
-  }, [BACKEND]);
+      .finally(() => {
+        if (ignore) return;
+
+        if (localStorage.getItem(DEMO_KEY) === "true") return;
+
+        setLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [BACKEND, isDemo]);
 
   const hasChartData = (data.eficienciaPorConcepto || []).length > 0;
   const hasErrores = (data.erroresFrecuentes || []).length > 0;
 
-  // Para no “castigar” a quien habla más con el tutor, evitamos lenguaje “eficiencia”
   const chartTitle = "Dificultad estimada por concepto";
   const chartHelp =
     "Aproximación basada en el número medio de mensajes necesarios para resolver ejercicios. Úsalo como señal de qué reforzar, no como nota.";
 
-  // CTA: llevar a Interacciones con ejercicio recomendado
-  const handlePracticar = () => {
+ /*  const handlePracticar = () => {
     if (!data.recomendacion?.ejercicioId) {
-      navigate("/busqueda"); // o a donde tengas ejercicios / búsqueda
+      navigate("/busqueda");
       return;
     }
-    // Si tu Interacciones abre por query param, por ejemplo:
-    // /interacciones?ejercicioId=...
     navigate(`/interacciones?ejercicioId=${data.recomendacion.ejercicioId}`);
-  };
+  }; */
+ const handlePracticar = () => {
+  localStorage.removeItem("currentInteraccionId");
+  localStorage.removeItem("ejercicioActualId");
+  navigate("/ejercicios", { replace: true });
+};
+
+
+
 
   if (loading) {
     return <div className="dashboard-loading">Cargando tu progreso...</div>;
@@ -99,8 +167,15 @@ export default function Dashboard() {
   return (
     <div className="dashboard-scope">
       <header className="dashboard-header container-app">
-        <h1 className="dashboard-title">Tu Progreso</h1>
+        <h1 className="dashboard-title">Tu Progreso {isDemo ? "(DEMO)" : ""}</h1>
         <div className="dashboard-acento" />
+
+        {isDemo && (
+          <div className="dashboard-demo-badge">
+            Modo demostración · Datos simulados para pruebas de usabilidad
+          </div>
+        )}
+
         <p className="dashboard-subtitle">
           Actividad semanal, conceptos que te cuestan más y una recomendación clara para tu próxima sesión.
         </p>
@@ -109,7 +184,6 @@ export default function Dashboard() {
       <main className="dashboard-main container-app">
         {/* FILA 1 */}
         <section className="dashboard-grid dashboard-grid-top">
-          {/* Resumen semanal */}
           <article className="card dashboard-card dashboard-card-wide">
             <h2 className="dashboard-card-title">
               <CalendarDaysIcon className="dashboard-icon" />
@@ -144,11 +218,8 @@ export default function Dashboard() {
             </div>
           </article>
 
-          {/* Recomendación (sustituye eficiencia general) */}
           <article className="card dashboard-card dashboard-card-center">
-            <h2 className="dashboard-card-title">
-              Recomendación para tu próxima sesión
-            </h2>
+            <h2 className="dashboard-card-title">Recomendación para tu próxima sesión</h2>
 
             <p className="dashboard-help" style={{ marginTop: "-0.25rem" }}>
               {data.recomendacion?.titulo ? (
@@ -156,7 +227,8 @@ export default function Dashboard() {
                   <strong>{data.recomendacion.titulo}</strong>
                   {data.recomendacion.concepto ? (
                     <span style={{ color: "var(--color-text-muted)" }}>
-                      {" "}· {data.recomendacion.concepto}
+                      {" "}
+                      · {data.recomendacion.concepto}
                     </span>
                   ) : null}
                 </>
@@ -165,9 +237,7 @@ export default function Dashboard() {
               )}
             </p>
 
-            <p className="dashboard-help">
-              {data.recomendacion?.motivo}
-            </p>
+            <p className="dashboard-help">{data.recomendacion?.motivo}</p>
 
             <button
               type="button"
@@ -182,12 +252,8 @@ export default function Dashboard() {
 
         {/* FILA 2 */}
         <section className="dashboard-grid dashboard-grid-bottom">
-          {/* Gráfico (renombrado) */}
           <article className="card dashboard-card">
-            <h2 className="dashboard-card-title">
-              {chartTitle}
-            </h2>
-
+            <h2 className="dashboard-card-title">{chartTitle}</h2>
             <p className="dashboard-help">{chartHelp}</p>
 
             <div className="dashboard-chart">
@@ -200,12 +266,7 @@ export default function Dashboard() {
                   >
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                     <XAxis type="number" allowDecimals={false} />
-                    <YAxis
-                      type="category"
-                      dataKey="concepto"
-                      width={140}
-                      tick={{ fontSize: 10 }}
-                    />
+                    <YAxis type="category" dataKey="concepto" width={140} tick={{ fontSize: 10 }} />
                     <Tooltip
                       cursor={{ fill: "rgba(231,38,33,0.06)" }}
                       contentStyle={{
@@ -214,7 +275,6 @@ export default function Dashboard() {
                         borderRadius: "12px"
                       }}
                     />
-                    {/* seguimos usando "interacciones" porque es lo que ya tienes */}
                     <Bar
                       dataKey="interacciones"
                       name="Mensajes medios"
@@ -224,14 +284,11 @@ export default function Dashboard() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="dashboard-empty">
-                  No hay datos suficientes para mostrar el gráfico.
-                </div>
+                <div className="dashboard-empty">No hay datos suficientes para mostrar el gráfico.</div>
               )}
             </div>
           </article>
 
-          {/* Errores frecuentes + última sesión en la misma card (más sentido) */}
           <article className="card dashboard-card">
             <h2 className="dashboard-card-title">
               <ExclamationTriangleIcon className="dashboard-icon" />
@@ -250,9 +307,7 @@ export default function Dashboard() {
                       background: "rgba(0,0,0,0.02)"
                     }}
                   >
-                    <div style={{ fontWeight: 700 }}>
-                      {e.texto}
-                    </div>
+                    <div style={{ fontWeight: 700 }}>{e.texto}</div>
                     <div style={{ color: "var(--color-text-muted)", marginTop: 4, fontSize: "0.92rem" }}>
                       Detectado {e.veces} vez/veces recientemente.
                     </div>
@@ -265,10 +320,8 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Separador */}
             <div style={{ height: 1, background: "var(--color-border)", margin: "1rem 0" }} />
 
-            {/* Última sesión */}
             <h3 className="dashboard-last-title" style={{ marginBottom: 6 }}>
               Resumen de la última sesión
             </h3>

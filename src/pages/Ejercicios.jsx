@@ -338,26 +338,35 @@ export default function EjerciciosPage() {
                     </div>
 
                     <DisclosurePanel className="ej-panel">
-                      {ejercicio.enunciado && (
-                        <div className="ej-panel-block">
-                          <h4 className="ej-panel-title">Enunciado</h4>
-                          <p className="ej-panel-text whitespace-pre-wrap">
-                            {ejercicio.enunciado}
-                          </p>
-                        </div>
-                      )}
+  <div className="ej-panel-layout">
 
-                      {ejercicio.imagen && (
-                        <div className="ej-panel-block">
-                          <h4 className="ej-panel-title">Imagen del ejercicio</h4>
-                          <img
-                            src={`${API}/static/${ejercicio.imagen}`}
-                            alt={`Enunciado del ejercicio ${ejercicio.titulo}`}
-                            className="ej-panel-img"
-                          />
-                        </div>
-                      )}
-                    </DisclosurePanel>
+    <div className="ej-panel-media">
+      {ejercicio.imagen && (
+        <img
+          src={`${API}/static/${ejercicio.imagen}`}
+          alt={ejercicio.titulo}
+          className="ej-panel-img"
+        />
+      )}
+    </div>
+
+    <div className="ej-panel-content">
+      <h4 className="ej-panel-title">Enunciado</h4>
+      <p className="ej-panel-text">{ejercicio.enunciado}</p>
+
+      <div className="ej-panel-actions">
+        <button
+          className="ej-start-btn"
+          onClick={() => handleRowClick(ejercicio._id)}
+        >
+          Comenzar ›
+        </button>
+      </div>
+    </div>
+
+  </div>
+</DisclosurePanel>
+
                   </>
                 )}
               </Disclosure>

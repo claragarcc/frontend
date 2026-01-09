@@ -408,19 +408,18 @@ input:focus, textarea:focus, select:focus {
 }
 
 
-   
 /* =========================================================
    PANTALLA: HOME (Home.jsx)
    ========================================================= */
 
 /* Scope general: evita scroll lateral */
-.home-scope {
+.home-scope{
   background-color: var(--color-bg-app);
   overflow-x: hidden;
 }
 
 /* Cabecera */
-.main-header {
+.main-header{
   position: relative;
   text-align: center;
   padding: 1.8rem 1.5rem 1.2rem;
@@ -428,7 +427,7 @@ input:focus, textarea:focus, select:focus {
   border-bottom: 1px solid var(--color-border);
 }
 
-.main-title {
+.main-title{
   font-size: 2.7rem;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -436,7 +435,7 @@ input:focus, textarea:focus, select:focus {
   color: var(--color-text-main);
 }
 
-.main-title::after {
+.main-title::after{
   content: "";
   display: block;
   width: 129px;
@@ -446,7 +445,7 @@ input:focus, textarea:focus, select:focus {
   background-color: var(--color-primary);
 }
 
-.main-subtitle {
+.main-subtitle{
   margin-top: 0.75rem;
   font-size: 1.12rem;
   color: var(--color-text-muted);
@@ -456,17 +455,17 @@ input:focus, textarea:focus, select:focus {
   line-height: 1.55;
 }
 
-/* Contenedor del split */
-.home-split-wrap {
-  padding: 1.25rem 1rem 2rem; /* un pelín menos en móvil */
+/* Contenedor split */
+.home-split-wrap{
+  padding: 1.25rem 1rem 2rem;
   background-color: var(--color-bg-app);
 }
 
-.home-split {
+.home-split{
   width: 100%;
   max-width: 100%;
   display: flex;
-  flex-direction: column; /* ✅ móvil: columna */
+  flex-direction: column; /* móvil */
   border-radius: var(--radius-lg);
   overflow: hidden;
   border: 1px solid var(--color-border);
@@ -474,49 +473,57 @@ input:focus, textarea:focus, select:focus {
   background-color: var(--color-bg-surface);
 }
 
-/* Panel */
-.split-panel {
+/* Panel base */
+.split-panel{
   width: 100%;
-  min-height: auto;          /* ✅ en móvil no forces vh */
-  padding: 1.6rem 1.25rem;   /* ✅ más compacto */
+  min-height: auto;
+  padding: 1.6rem 1.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
-  text-decoration: none;     /* ✅ para Link */
-  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  text-decoration: none;
+
+  /* ✅ mismo color siempre (activo y desactivado) */
+  background-color: var(--color-bg-surface) !important;
+  color: var(--color-text-main) !important;
+
+  /* ✅ hover estable */
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
-/* Activo / desactivado */
-.split-panel.bg-slate-50 {
+/* Si aún llevas bg-slate-200 en el desactivado, lo neutralizamos */
+.split-panel.bg-slate-200{
   background-color: var(--color-bg-surface) !important;
   color: var(--color-text-main) !important;
 }
 
-.split-panel.bg-slate-200 {
-  background-color: var(--color-bg-disabled) !important;
-  color: rgba(0,0,0,0.55) !important;
+/* Separador entre paneles (móvil) */
+.home-split > .split-panel + .split-panel{
+  border-top: 1px solid var(--color-border);
 }
 
 /* Contenido */
-.split-content {
+.split-content{
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 0.25rem;
-  max-width: 42rem; /* ✅ evita que se “estire raro” */
+  max-width: 42rem;
 }
 
-.panel-title {
-  font-size: 1.85rem; /* ✅ un poco menos en móvil */
+.panel-title{
+  font-size: 1.85rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   margin: 0.85rem 0 0;
 }
 
-.panel-subtitle {
+.panel-subtitle{
   margin-top: 0.75rem;
   font-size: 1.02rem;
   line-height: 1.7;
@@ -524,8 +531,8 @@ input:focus, textarea:focus, select:focus {
   color: var(--color-text-muted);
 }
 
-/* Acento lateral: SOLO donde haya hover real */
-.split-panel::before {
+/* Acento rojo lateral (por defecto apagado) */
+.split-panel::before{
   content: "";
   position: absolute;
   left: 0;
@@ -533,18 +540,18 @@ input:focus, textarea:focus, select:focus {
   bottom: 0;
   width: 0px;
   background-color: var(--color-primary);
-  transition: width 0.22s ease;
+  transition: width 0.18s ease;
   opacity: 0.95;
 }
 
 /* Iconos */
-.split-content .h-16 {
-  transition: transform 0.22s ease, color 0.22s ease, opacity 0.22s ease;
+.split-content .h-16{
+  transition: transform 0.18s ease, color 0.18s ease, opacity 0.18s ease;
 }
 
-/* CTA: ✅ visible SIEMPRE por defecto (móvil incluido) */
+/* CTA */
 .cta-button,
-.cta-button-disabled {
+.cta-button-disabled{
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -553,76 +560,102 @@ input:focus, textarea:focus, select:focus {
   padding: 0.8rem 1.4rem;
   border-radius: 9999px;
   font-weight: 600;
-  width: 100%;              /* ✅ móvil: botón ancho, fácil de pulsar */
+  width: 100%;
   max-width: 22rem;
 }
 
 /* CTA activo */
-.cta-button {
+.cta-button{
   background-color: var(--color-text-main);
   color: var(--color-bg-surface);
-  opacity: 1;               /* ✅ SIEMPRE visible */
-  transform: translateY(0); /* ✅ sin animación de “aparecer” */
-  transition: background-color 0.2s ease, transform 0.12s ease;
+  opacity: 1;
+  transform: translateY(0);
+  transition: background-color 0.18s ease, transform 0.12s ease;
 }
 
-.cta-button:active {
+.cta-button:hover{
+  background-color: var(--color-primary);
+}
+
+.cta-button:active{
   transform: scale(0.98);
 }
 
-.cta-button:focus-visible {
+.cta-button:focus-visible{
   outline: 2px solid var(--color-primary);
   outline-offset: 3px;
 }
 
 /* CTA desactivado */
-.cta-button-disabled {
-  background-color: rgba(0,0,0,0.10);
+.cta-button-disabled{
+  background-color: rgba(0,0,0,0.08);
   color: rgba(0,0,0,0.55);
   border: 1px solid rgba(0,0,0,0.10);
 }
 
-/* Desktop: fila y efecto hover elegante */
-@media (min-width: 768px) {
-  .home-split-wrap {
+/* Desactivado: mismo fondo, “apagado” */
+.split-panel.cursor-not-allowed{
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+/* =========================
+   Desktop
+   ========================= */
+@media (min-width: 768px){
+  .home-split-wrap{
     padding: 1.25rem 1.5rem 2rem;
   }
 
-  .home-split {
-    flex-direction: row; /* ✅ escritorio: fila */
+  .home-split{
+    flex-direction: row;
   }
 
-  .split-panel {
+  /* Separador entre paneles en desktop */
+  .home-split > .split-panel + .split-panel{
+    border-top: 0;
+    border-left: 1px solid var(--color-border);
+  }
+
+  .split-panel{
     width: 50%;
     min-height: 56vh;
     padding: 2rem 1.8rem;
   }
 
-  /* Hover solo si tiene sentido */
-  @media (hover: hover) and (pointer: fine) {
-    .split-panel:not(.cursor-not-allowed):hover {
-      transform: translateY(-2px);
+  /* Hover SOLO para el clicable */
+  @media (hover: hover) and (pointer: fine){
+    .split-panel:not(.cursor-not-allowed):hover{
+      transform: translateY(-1px);
       box-shadow: var(--shadow-md);
     }
 
-    .split-panel:not(.cursor-not-allowed):hover::before {
+    .split-panel:not(.cursor-not-allowed):hover::before{
       width: 6px;
     }
 
-    .split-panel:not(.cursor-not-allowed):hover .split-content .h-16 {
+    .split-panel:not(.cursor-not-allowed):hover .split-content .h-16{
       color: var(--color-primary) !important;
-      transform: translateY(-2px) scale(1.03);
+      transform: translateY(-1px) scale(1.02);
     }
 
-    .cta-button:hover {
-      background-color: var(--color-primary);
+    /* ✅ CLAVE: desactivado totalmente fijo, sin rojo ni nada */
+    .split-panel.cursor-not-allowed:hover{
+      transform: none !important;
+      box-shadow: none !important;
+    }
+    .split-panel.cursor-not-allowed:hover::before{
+      width: 0 !important;
+    }
+    .split-panel.cursor-not-allowed:hover .split-content .h-16{
+      transform: none !important;
+      color: inherit !important;
+    }
+    .split-panel.cursor-not-allowed:hover .cta-button-disabled{
+      transform: none !important;
     }
   }
 }
-
-
-
-
 
    /* =========================================================
    PANTALLA: BÚSQUEDA / FILTROS DE EJERCICIOS
@@ -864,12 +897,15 @@ input:focus, textarea:focus, select:focus {
    EJERCICIOS – Responsive tabla -> tarjetas en móvil
    ========================================================= */
 
-.ejercicios-scope {
+.ejercicios-scope{
   overflow-x: hidden;
 }
 
-/* Contenedor lista */
-.ej-list {
+/* =========================
+   CONTENEDOR LISTA
+   ========================= */
+
+.ej-list{
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
@@ -878,107 +914,96 @@ input:focus, textarea:focus, select:focus {
 }
 
 /* Cabecera (solo desktop) */
-.ej-head {
-  display: none;
-}
+.ej-head{ display: none; }
+.ej-body{ display: block; }
 
-.ej-body {
-  display: block;
-}
+/* =========================
+   ITEM
+   ========================= */
 
-.ej-item {
+.ej-item{
   border-top: 1px solid rgba(0,0,0,0.06);
 }
-.ej-item:first-child {
-  border-top: 0;
-}
+.ej-item:first-child{ border-top: 0; }
 
-/* Fila principal */
-.ej-row {
+/* =========================
+   FILA PRINCIPAL
+   ========================= */
+
+.ej-row{
   display: flex;
   align-items: stretch;
   gap: 0.5rem;
-  padding: 0.75rem 0.75rem;
+  padding: 0.75rem;
   background: var(--color-bg-surface);
   transition: background-color 0.16s ease;
 }
-
-.ej-row:hover {
-  background: rgba(231, 38, 33, 0.025);
+.ej-row:hover{
+  background: rgba(231,38,33,0.025);
 }
-
-.ej-row-open {
+.ej-row-open{
   background: rgba(0,0,0,0.015);
 }
 
-/* Toggle (caret) */
-.ej-toggle {
+/* Toggle */
+.ej-toggle{
   width: 44px;
   height: 44px;
   display: grid;
   place-items: center;
   border-radius: 10px;
   flex: 0 0 auto;
-  transition: background-color 0.16s ease;
 }
-.ej-toggle:hover {
+.ej-toggle:hover{
   background: rgba(0,0,0,0.05);
 }
-.ej-toggle:focus-visible {
-  outline: 3px solid rgba(231, 38, 33, 0.20);
+.ej-toggle:focus-visible{
+  outline: 3px solid rgba(231,38,33,0.20);
   outline-offset: 2px;
 }
 
-/* Zona central clicable */
-.ej-main {
+/* Zona central */
+.ej-main{
   flex: 1 1 auto;
   min-width: 0;
   cursor: pointer;
   padding: 0.15rem 0;
 }
 
-/* Título (siempre visible) */
-.ej-title {
+/* Título */
+.ej-title{
   font-weight: 750;
   color: var(--color-text-main);
   letter-spacing: -0.01em;
   line-height: 1.25;
-  margin-top: 0.15rem;
 }
 
-/* Meta: asignatura · concepto */
-.ej-meta {
+/* Meta */
+.ej-meta{
   margin-top: 0.35rem;
   font-size: 0.92rem;
   color: var(--color-text-muted);
   display: flex;
-  align-items: center;
   gap: 0.35rem;
   flex-wrap: wrap;
 }
-.ej-meta-sep {
-  opacity: 0.6;
-}
+.ej-meta-sep{ opacity: 0.6; }
 
-/* En móvil NO mostramos columnas separadas */
+/* Ocultar columnas en móvil */
 .ej-asig,
-.ej-concept {
+.ej-concept{
   display: none;
 }
 
-/* Zona derecha: nivel + check */
-.ej-right {
+/* Derecha */
+.ej-right{
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  flex: 0 0 auto;
-  padding-left: 0.25rem;
 }
 
-.ej-level-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+/* Nivel */
+.ej-level-pill{
   min-width: 42px;
   padding: 0.3rem 0.65rem;
   border-radius: 999px;
@@ -987,52 +1012,119 @@ input:focus, textarea:focus, select:focus {
   background: rgba(0,0,0,0.06);
   color: rgba(0,0,0,0.70);
 }
-
-.ej-row:hover .ej-level-pill {
-  background: rgba(231, 38, 33, 0.12);
-  color: var(--color-text-main);
+.ej-row:hover .ej-level-pill{
+  background: rgba(231,38,33,0.12);
 }
 
-/* Check discreto */
-.ej-done {
+/* Check */
+.ej-done{
   color: rgba(0,0,0,0.45);
-  opacity: 0.95;
-  display: inline-flex;
-  align-items: center;
 }
 
-/* Panel desplegable */
-.ej-panel {
-  padding: 0.75rem 1rem 1rem;
+/* =========================================================
+   PANEL DESPLEGABLE – IMAGEN IZQ / TEXTO DER
+   ========================================================= */
+
+.ej-panel{
+  padding: 0.9rem 1rem 1rem;
   background: var(--color-bg-surface);
   border-top: 1px solid rgba(0,0,0,0.06);
 }
 
-.ej-panel-block + .ej-panel-block {
-  margin-top: 1rem;
+/* Layout interno */
+.ej-panel-layout{
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 1rem;
+  align-items: start;
 }
 
-.ej-panel-title {
+/* Columna imagen */
+.ej-panel-media{
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+/* Imagen */
+.ej-panel-img{
+  width: 100%;
+  max-width: 180px;
+  max-height: 140px;
+  height: auto;
+  object-fit: contain;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgba(0,0,0,0.02);
+}
+
+/* Texto */
+.ej-panel-content{
+  min-width: 0;
+}
+
+.ej-panel-title{
   font-weight: 750;
   color: var(--color-text-main);
   margin-bottom: 0.35rem;
 }
 
-.ej-panel-text {
+.ej-panel-text{
   color: var(--color-text-muted);
   line-height: 1.6;
 }
 
-.ej-panel-img {
-  max-width: 100%;
-  height: auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+/* Acciones */
+.ej-panel-actions{
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
 }
 
-/* ===== Desktop / tablet: tabla clásica ===== */
-@media (min-width: 640px) {
-  .ej-head {
+/* Botón comenzar */
+.ej-start-btn{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  font-weight: 650;
+  font-size: 0.9rem;
+  border: 1px solid rgba(0,0,0,0.14);
+  background: var(--color-bg-surface);
+  color: var(--color-text-main);
+  transition: background-color 0.16s ease, border-color 0.16s ease, transform 0.12s ease;
+}
+.ej-start-btn:hover{
+  background: rgba(231,38,33,0.06);
+  border-color: rgba(231,38,33,0.35);
+}
+.ej-start-btn:active{
+  transform: scale(0.98);
+}
+
+/* =========================
+   MÓVIL
+   ========================= */
+
+@media (max-width: 520px){
+  .ej-panel-layout{
+    grid-template-columns: 120px 1fr;
+    gap: 0.85rem;
+  }
+
+  .ej-panel-img{
+    max-width: 120px;
+    max-height: 110px;
+  }
+}
+
+/* =========================
+   DESKTOP / TABLET – TABLA
+   ========================= */
+
+@media (min-width: 640px){
+  .ej-head{
     display: grid;
     grid-template-columns: 44px 1fr 12rem 12rem 6rem 3rem;
     align-items: center;
@@ -1044,74 +1136,41 @@ input:focus, textarea:focus, select:focus {
     color: rgba(0,0,0,0.55);
     text-transform: uppercase;
     font-weight: 700;
-    column-gap: 0.5rem;
   }
 
-  /* La cabecera usa "ej-col ..." (los divs) */
-  .ej-col-toggle { grid-column: 1; }
-  .ej-col-title  { grid-column: 2; }
-  .ej-col-asig   { grid-column: 3; }
-  .ej-col-concept{ grid-column: 4; }
-  .ej-col-level  { grid-column: 5; text-align: center; }
-  .ej-col-done   { grid-column: 6; text-align: center; }
-
-  /* Fila como grid "tabla" */
-  .ej-row {
+  .ej-row{
     display: grid;
     grid-template-columns: 44px 1fr 12rem 12rem 6rem 3rem;
     align-items: center;
     padding: 0.55rem 0.75rem;
-    column-gap: 0.5rem;
   }
 
-  /* Cada bloque va a su columna */
-  .ej-toggle { grid-column: 1; }
-
-  .ej-main {
-    grid-column: 2 / 5; /* aquí dentro ponemos título, asig y concepto */
+  .ej-main{
+    grid-column: 2 / 5;
     display: grid;
     grid-template-columns: 1fr 12rem 12rem;
-    align-items: center;
     gap: 0.5rem;
-    padding: 0;
   }
 
-  /* Ocultamos metainfo compacta (solo móvil) */
-  .ej-meta { display: none; }
+  .ej-meta{ display: none; }
 
-  /* Mostramos columnas separadas */
   .ej-asig,
-  .ej-concept {
+  .ej-concept{
     display: block;
     color: var(--color-text-muted);
     font-size: 0.95rem;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
-  /* El título que corte bien */
-  .ej-title {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* Derecha: nivel en su columna y check en su columna */
-  .ej-right {
+  .ej-right{
     grid-column: 5 / 7;
     display: grid;
     grid-template-columns: 6rem 3rem;
-    align-items: center;
     justify-items: center;
-    gap: 0;
-    padding-left: 0;
   }
-
-  .ej-level-pill { justify-self: center; }
-  .ej-done { justify-self: center; }
 }
-
 
 
 
@@ -1119,11 +1178,228 @@ input:focus, textarea:focus, select:focus {
    COMPONENTE: NAVBAR
    (clases específicas de Navbar.jsx)
    ========================================================= */
-
 /* =========================================================
-   PANTALLA: INTERACCIONES / CHAT
-   (clases específicas de Interacciones.jsx)
+   NAVBAR (Navbar.jsx)
+   - Mantiene tu estilo
+   - Arregla móvil (no se ve “raro”)
    ========================================================= */
+
+/* Navbar general */
+.navbar{
+  position: sticky;
+  top: 0;
+  z-index: 50;
+
+  /* ✅ evita scroll lateral típico de 100vw */
+  width: 100%;
+  background-color: var(--color-blanco);
+  border-bottom: 1px solid var(--color-borde-claro);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+/* Contenedor principal */
+.navbar-container{
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.25rem; /* un poco menos para móvil */
+}
+
+/* Flex interior */
+.navbar-inner{
+  display: flex;
+  height: 4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* Logo y título */
+.navbar-logo{
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+.logo-img{
+  height: 2.55rem;   /* ✅ un poco menor para que no “mande” */
+  width: auto;
+  flex: 0 0 auto;
+}
+.logo-text{
+  font-family: var(--font-family-base);
+  font-size: 1.15rem;
+  color: var(--color-negro);
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Botón hamburguesa */
+.btn-toggle{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 0.55rem;
+  color: var(--color-grisoscuro);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.btn-toggle:hover{
+  background-color: var(--color-rojo);
+  color: var(--color-blanco);
+}
+.icon-toggle{
+  height: 1.5rem;
+  width: 1.5rem;
+}
+
+/* =========================
+   Menú escritorio (iconos + tooltip)
+   ========================= */
+
+.navbar-menu{
+  display: none; /* ✅ por defecto oculto; se activa en desktop */
+}
+
+@media (min-width: 640px){
+  .navbar-menu{
+    display: flex;
+    align-items: center;
+  }
+}
+
+.navbar-links{
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+/* Item */
+.nav-item{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0.7rem;
+  position: relative;
+  line-height: 1;
+}
+
+/* Estados */
+.nav-item-inactive{
+  color: var(--color-negro);
+}
+.nav-item-inactive:hover{
+  color: var(--color-rojo);
+}
+.nav-item-active{
+  color: var(--color-rojo);
+}
+
+/* Iconos */
+.nav-icon{
+  height: 1.25rem;
+  width: 1.25rem;
+}
+.nav-icon-inactive{
+  stroke: var(--color-negro);
+}
+.nav-icon-active{
+  stroke: var(--color-rojo);
+}
+
+/* ✅ hover de icono (solo escritorio con ratón) */
+@media (hover: hover) and (pointer: fine){
+  .nav-item:hover .nav-icon-inactive{
+    stroke: var(--color-rojo);
+  }
+}
+
+/* Tooltip (solo escritorio; en móvil NO tiene sentido) */
+.nav-tooltip{
+  position: absolute;
+  top: 100%;
+  margin-top: 0.5rem;
+  background-color: var(--color-negro);
+  color: var(--color-blanco);
+  font-size: 0.75rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 0.375rem;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  white-space: nowrap;
+  pointer-events: none;
+  display: none;
+}
+
+/* ✅ tooltip solo con hover real */
+@media (hover: hover) and (pointer: fine){
+  .nav-item:hover .nav-tooltip{
+    opacity: 1;
+    transform: translateY(0);
+    display: block;
+  }
+}
+
+/* =========================
+   Panel móvil (dropdown)
+   ========================= */
+
+/* Panel móvil: limpio y “parecido” al escritorio */
+.navbar-panel{
+  padding: 0.75rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border-top: 1px solid var(--color-borde-claro);
+  background: var(--color-blanco);
+}
+
+/* Items móviles: ahora se ven normales (no raros) */
+.nav-mobile-item{
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.98rem;
+  font-weight: 650;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.75rem;
+  color: var(--color-negro);
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+/* Hover/active similar al escritorio */
+.nav-mobile-item:hover{
+  background: rgba(231,38,33,0.06);
+  color: var(--color-rojo);
+}
+
+/* Estado activo en móvil */
+.nav-mobile-item.nav-item-active{
+  background: rgba(231,38,33,0.08);
+  color: var(--color-rojo);
+}
+
+/* Ajuste móvil extra: que no “bote” nada */
+@media (max-width: 639px){
+  .navbar-container{
+    padding: 0 1rem;
+  }
+  .logo-text{
+    font-size: 1.05rem;
+  }
+  .logo-img{
+    height: 2.3rem;
+  }
+}
+
 
    /* =========================================================
    PANTALLA: INTERACCIONES / CHAT (refactor consistente)
@@ -2305,6 +2581,17 @@ input:focus, textarea:focus, select:focus {
     justify-self: center;
   }
 }
+.dashboard-demo-badge{
+  display:inline-block;
+  margin-top: .6rem;
+  padding: .35rem .7rem;
+  border: 1px solid var(--color-border);
+  border-radius: 9999px;
+  font-size: .9rem;
+  color: var(--color-text-muted);
+  background: rgba(0,0,0,0.03);
+}
+
 
 
 /* =========================================================
@@ -2527,158 +2814,10 @@ input:focus, textarea:focus, select:focus {
   margin-top: 3rem;
 }
 
-/* Navbar general */
-.navbar {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  width: 100vw;
-  background-color: var(--color-blanco);
-  border-bottom: 1px solid var(--color-borde-claro);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-}
 
-/* Contenedor principal */
-.navbar-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1.5rem;
-}
 
-/* Flex de interior */
-.navbar-inner {
-  display: flex;
-  height: 4rem;
-  align-items: center;
-  justify-content: space-between;
-}
 
-/* Logo y título */
-.navbar-logo {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.logo-img {
-  height: 3rem;
-  width: auto;
-}
-.logo-text {
-  font-family: var(--font-family-base);
-  font-size: 1.3rem;
-  color: var(--color-negro);
-  font-weight: bold; 
-}
 
-/* Botón hamburguesa */
-.btn-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem;
-  border-radius: 0.375rem;
-  color: var(--color-grisoscuro);
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-.btn-toggle:hover {
-  background-color: var(--color-rojo);
-  color: var(--color-blanco);
-}
-.icon-toggle {
-  height: 1.5rem;
-  width: 1.5rem;
-}
-
-/* Navegación escritorio */
-@media (min-width: 640px) {
-  .navbar-menu {
-    display: flex;
-  }
-}
-
-.navbar-links {
-  display: flex;
-  gap: 1rem;
-}
-
-.nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 0.75rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: 0.5rem;
-  position: relative;
-}
-.nav-item-inactive {
-  color: var(--color-negro);
-}
-.nav-item-inactive:hover {
-  color: var(--color-rojo);
-}
-.nav-item-active {
-  color: var(--color-rojo);
-}
-
-/* Iconos */
-.nav-icon {
-  height: 1.25rem;
-  width: 1.25rem;
-}
-.nav-icon-inactive {
-  stroke: var(--color-negro);
-}
-.nav-icon-active,
-.nav-icon-inactive:hover {
-  stroke: var(--color-rojo);
-}
-
-/* Tooltip */
-.nav-tooltip {
-  position: absolute;
-  top: 100%;
-  margin-top: 0.5rem;
-  background-color: var(--color-negro);
-  color: var(--color-blanco);
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.375rem;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  white-space: nowrap;
-  display: none;
-}
-.nav-item:hover .nav-tooltip {
-  opacity: 1;
-  display: block;
-}
-
-/* Panel móvil */
-.navbar-panel {
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-/* Ítems móviles */
-.nav-mobile-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  transition: color 0.2s ease;
-}
-
-/* /filtrarejercicios */
-.etiqueta {
-  color: var(--color-negro);
-  font-family: var(--font-family-base);
-}
 
 /* CONTENEDORES GENERALES */
 .interacciones {

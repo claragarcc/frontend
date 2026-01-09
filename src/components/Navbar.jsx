@@ -20,8 +20,8 @@ import {
 const navigation = [
   { name: 'Inicio', to: '/home', icon: HomeIcon },
   { name: 'Ejercicios', to: '/ejercicios', icon: BookOpenIcon },
-  { name: 'Interacciones', to: '/interacciones', icon: ChatBubbleLeftRightIcon },
-  { name: 'Dashboard', to: '/dashboard', icon: ChartBarIcon },
+  { name: 'Chat', to: '/interacciones', icon: ChatBubbleLeftRightIcon },
+  { name: 'Progreso', to: '/dashboard', icon: ChartBarIcon },
 ];
 
 function classNames(...classes) {

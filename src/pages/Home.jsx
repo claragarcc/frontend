@@ -34,7 +34,7 @@ export default function Home() {
           {/* Panel Izquierdo: Dispositivos Electrónicos (Activo) */}
           <Link
             to={buildSubjectUrl("Dispositivos electrónicos")}
-            className="group split-panel bg-slate-50 text-slate-900 md:border-r md:border-slate-200"
+            className="group split-panel is-active"
           >
             <div className="split-content">
               <CpuChipIcon className="h-16 w-16 mb-4 text-slate-400" />
@@ -53,7 +53,7 @@ export default function Home() {
           </Link>
 
           {/* Panel Derecho: Teoría de Circuitos (Próximamente) */}
-          <div className="group split-panel bg-slate-200 text-slate-500 cursor-not-allowed">
+          <div className="group split-panel is-disabled cursor-not-allowed">
             <div className="split-content">
               <VariableIcon className="h-16 w-16 mb-4 text-slate-400" />
 
