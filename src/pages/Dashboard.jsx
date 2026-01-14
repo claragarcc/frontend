@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import {
   BarChart,
@@ -73,69 +73,132 @@ const demoData = {
   }
 };
 
+// Merge profundo + saneo de tipos para evitar “va raro”
+function mergeDashboardData(apiData) {
+  const d = apiData || {};
+
+  const eficienciaPorConcepto = Array.isArray(d.eficienciaPorConcepto)
+    ? d.eficienciaPorConcepto
+        .filter((x) => x && typeof x.concepto === "string")
+        .map((x) => ({
+          concepto: x.concepto,
+          interacciones: Number(x.interacciones) || 0
+        }))
+    : initialState.eficienciaPorConcepto;
+
+  const erroresFrecuentes = Array.isArray(d.erroresFrecuentes)
+    ? d.erroresFrecuentes
+        .filter((e) => e && (e.etiqueta || e.texto))
+        .map((e) => ({
+          etiqueta: e.etiqueta || "",
+          texto: e.texto || e.etiqueta || "Error",
+          veces: Number(e.veces) || 0
+        }))
+    : initialState.erroresFrecuentes;
+
+  return {
+    ...initialState,
+    ...d,
+
+    resumenSemanal: {
+      ...initialState.resumenSemanal,
+      ...(d.resumenSemanal || {})
+    },
+
+    ultimaSesion: {
+      ...initialState.ultimaSesion,
+      ...(d.ultimaSesion || {})
+    },
+
+    recomendacion: {
+      ...initialState.recomendacion,
+      ...(d.recomendacion || {})
+    },
+
+    eficienciaPorConcepto,
+    erroresFrecuentes
+  };
+}
+
 export default function Dashboard() {
-  // ✅ leer demo ANTES del primer render (evita que arranque axios)
   const initialIsDemo = localStorage.getItem(DEMO_KEY) === "true";
 
   const [isDemo] = useState(initialIsDemo);
   const [data, setData] = useState(
-    initialIsDemo ? { ...initialState, ...demoData } : initialState
+    initialIsDemo ? mergeDashboardData(demoData) : initialState
   );
   const [loading, setLoading] = useState(!initialIsDemo);
+  const [loadError, setLoadError] = useState(null);
 
   const navigate = useNavigate();
 
-  // NOTA: esto debe venir de tu login real (CAS) más adelante
   const MOCK_USER_ID = "681cd8217918fbc4fc7a626f";
   const BACKEND = import.meta.env.VITE_BACKEND_URL;
 
+  const backendBase = useMemo(() => {
+    if (!BACKEND) return "";
+    return String(BACKEND).replace(/\/+$/, "");
+  }, [BACKEND]);
+
   useEffect(() => {
     let ignore = false;
+    setLoadError(null);
 
-    // ✅ DEMO: fijamos datos y no hacemos nada más
     if (isDemo) {
-      setData({ ...initialState, ...demoData });
+      setData(mergeDashboardData(demoData));
       setLoading(false);
       return () => {
         ignore = true;
       };
     }
 
-    // ✅ REAL
+    if (!backendBase) {
+      setData(initialState);
+      setLoading(false);
+      setLoadError("No está configurado VITE_BACKEND_URL.");
+      return () => {
+        ignore = true;
+      };
+    }
+
     setLoading(true);
 
     axios
-      .get(`${BACKEND}/api/progreso/${MOCK_USER_ID}`, { withCredentials: true })
+      .get(`${backendBase}/api/progreso/${MOCK_USER_ID}`, {
+        withCredentials: true,
+        timeout: 12000
+      })
       .then((res) => {
         if (ignore) return;
-
-        // ✅ blindaje extra: si alguien activa demo “a mitad”, no pisamos
         if (localStorage.getItem(DEMO_KEY) === "true") return;
-
-        const fullData = { ...initialState, ...(res.data || {}) };
-        setData(fullData);
+        setData(mergeDashboardData(res.data));
       })
       .catch((error) => {
         if (ignore) return;
-
-        // ✅ blindaje extra: si alguien activa demo “a mitad”, no pisamos
         if (localStorage.getItem(DEMO_KEY) === "true") return;
 
         console.error("Error al cargar los datos del progreso:", error);
         setData(initialState);
+
+        const msg =
+          error?.code === "ECONNABORTED"
+            ? "Tiempo de espera agotado al consultar el progreso."
+            : error?.response
+              ? `Error ${error.response.status} al consultar el progreso.`
+              : "No se pudo conectar con el backend para cargar el progreso.";
+
+        setLoadError(msg);
       })
       .finally(() => {
         if (ignore) return;
-
         if (localStorage.getItem(DEMO_KEY) === "true") return;
-
         setLoading(false);
       });
 
     return () => {
       ignore = true;
     };
-  }, [BACKEND, isDemo]);
+  }, [backendBase, isDemo]);
 
   const hasChartData = (data.eficienciaPorConcepto || []).length > 0;
   const hasErrores = (data.erroresFrecuentes || []).length > 0;
@@ -144,21 +207,17 @@ export default function Dashboard() {
   const chartHelp =
     "Aproximación basada en el número medio de mensajes necesarios para resolver ejercicios. Úsalo como señal de qué reforzar, no como nota.";
 
- /*  const handlePracticar = () => {
-    if (!data.recomendacion?.ejercicioId) {
-      navigate("/busqueda");
+  const handlePracticar = () => {
+    localStorage.removeItem("currentInteraccionId");
+    localStorage.removeItem("ejercicioActualId");
+
+    const recId = data?.recomendacion?.ejercicioId;
+    if (recId) {
+      navigate(`/interacciones?ejercicioId=${encodeURIComponent(recId)}`);
       return;
     }
-    navigate(`/interacciones?ejercicioId=${data.recomendacion.ejercicioId}`);
-  }; */
- const handlePracticar = () => {
-  localStorage.removeItem("currentInteraccionId");
-  localStorage.removeItem("ejercicioActualId");
-  navigate("/ejercicios", { replace: true });
-};
-
-
-
+    navigate("/ejercicios", { replace: true });
+  };
 
   if (loading) {
     return <div className="dashboard-loading">Cargando tu progreso...</div>;
@@ -173,6 +232,13 @@ export default function Dashboard() {
         {isDemo && (
           <div className="dashboard-demo-badge">
             Modo demostración · Datos simulados para pruebas de usabilidad
+          </div>
+        )}
+
+        {!isDemo && loadError && (
+          <div className="dashboard-demo-badge" style={{ borderLeftColor: "var(--color-primary)" }}>
+            No se ha podido cargar tu progreso real. Mostrando valores por defecto. <br />
+            <span style={{ opacity: 0.85 }}>{loadError}</span>
           </div>
         )}
 
@@ -265,9 +331,14 @@ export default function Dashboard() {
                     margin={{ top: 8, right: 16, left: 16, bottom: 8 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                    <XAxis type="number" allowDecimals={false} />
+
+                    {/* interacciones es MEDIA ⇒ permitimos decimales */}
+                    <XAxis type="number" allowDecimals />
+
                     <YAxis type="category" dataKey="concepto" width={140} tick={{ fontSize: 10 }} />
+
                     <Tooltip
+                      formatter={(value) => [`${Number(value).toFixed(1)}`, "Mensajes medios"]}
                       cursor={{ fill: "rgba(231,38,33,0.06)" }}
                       contentStyle={{
                         backgroundColor: "var(--color-bg-surface)",
@@ -275,6 +346,7 @@ export default function Dashboard() {
                         borderRadius: "12px"
                       }}
                     />
+
                     <Bar
                       dataKey="interacciones"
                       name="Mensajes medios"
