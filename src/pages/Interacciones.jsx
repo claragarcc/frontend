@@ -1,98 +1,35 @@
-// Interacciones.jsx
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { getCurrentUser } from "../services/auth";
 import { api } from "../services/api";
 
-const PALABRAS_CLAVE_FIN = ["Enhorabuena, esa es la respuesta correcta"];
+const FIN_TOKEN = "<FIN_EJERCICIO>";
+
+function containsFinishToken(text) {
+  return typeof text === "string" && text.includes(FIN_TOKEN);
+}
+function stripFinishToken(text) {
+  if (typeof text !== "string") return "";
+  return text.replaceAll(FIN_TOKEN, "").trim();
+}
+
+/* =========================================================================
+   MODO DEMO LOCAL (COMENTADO)
+   ------------------------------------------------------------
+   Antes guardabas chats en localStorage para “simular” conversaciones.
+   Ahora NO lo usamos porque quieres que incluso en modo demo (login demo)
+   el tutor sea REAL (backend + Ollama).
+   Si algún día quieres recuperar el demo local, aquí lo tienes.
+============================================================================
 const DEMO_KEY = "tv_demo_enabled";
-
-// ✅ SOLO DEMO: almacenamiento local de chats (para pruebas de usabilidad)
 const DEMO_CHATS_KEY = "tv_demo_chats_v1";
-
-// ---------- Helpers DEMO (localStorage) ----------
-function readDemoChats() {
-  try {
-    const raw = localStorage.getItem(DEMO_CHATS_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeDemoChats(obj) {
-  localStorage.setItem(DEMO_CHATS_KEY, JSON.stringify(obj));
-}
-
-function demoEnsureChat({ chatId, ejercicioId }) {
-  const all = readDemoChats();
-  if (!all[chatId]) {
-    all[chatId] = {
-      ejercicioId,
-      conversacion: [],
-      updatedAt: Date.now(),
-    };
-    writeDemoChats(all);
-  }
-  return all[chatId];
-}
-
-function demoCreateChat({ ejercicioId }) {
-  const chatId = `DEMO_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-  const all = readDemoChats();
-  all[chatId] = {
-    ejercicioId,
-    conversacion: [],
-    updatedAt: Date.now(),
-  };
-  writeDemoChats(all);
-  return chatId;
-}
-
-function demoDeleteChat(chatId) {
-  const all = readDemoChats();
-  if (all[chatId]) {
-    delete all[chatId];
-    writeDemoChats(all);
-  }
-}
-
-function rebuildDemoSidebar(ejercicios) {
-  const all = readDemoChats();
-  const ids = Object.keys(all);
-
-  const items = ids.map((id) => {
-    const ejId = all[id]?.ejercicioId;
-    const ej = ejercicios.find((e) => e._id === ejId);
-    return {
-      id,
-      ejercicioId: ejId,
-      titulo: ej?.titulo || "Chat demo",
-      concepto: ej?.concepto || "Demo",
-      nivel: ej?.nivel ?? "—",
-      updatedAt: all[id]?.updatedAt ?? 0,
-    };
-  });
-
-  items.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-  return items;
-}
-
-function demoAppendMessages(chatId, ejercicioId, newMessages) {
-  const all = readDemoChats();
-  if (!all[chatId]) {
-    all[chatId] = { ejercicioId, conversacion: [], updatedAt: Date.now() };
-  }
-  all[chatId].conversacion = Array.isArray(all[chatId].conversacion)
-    ? [...all[chatId].conversacion, ...newMessages]
-    : [...newMessages];
-
-  all[chatId].updatedAt = Date.now();
-  writeDemoChats(all);
-
-  return all[chatId].conversacion;
-}
+function readDemoChats() { ... }
+function writeDemoChats(obj) { ... }
+function demoCreateChat({ ejercicioId }) { ... }
+function demoAppendMessages(chatId, ejercicioId, newMessages) { ... }
+function rebuildDemoSidebar(ejercicios) { ... }
+============================================================================ */
 
 export default function Interacciones() {
   const [currentChatMessages, setCurrentChatMessages] = useState([]);
@@ -101,17 +38,12 @@ export default function Interacciones() {
   const [nuevoMensaje, setNuevoMensaje] = useState("");
   const [currentInteraccionId, setCurrentInteraccionId] = useState(null);
 
-  // ✅ usuario real desde sesión
   const [userId, setUserId] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
 
-  // ✅ Vista móvil real (no función)
   const [isMobileView, setIsMobileView] = useState(false);
-
-  // ✅ Panel (lista chats)
   const [mostrarPanel, setMostrarPanel] = useState(true);
 
-  // Sidebar width (solo desktop)
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const savedWidth = localStorage.getItem("sidebarWidth");
     return savedWidth ? parseInt(savedWidth, 10) : 320;
@@ -120,14 +52,11 @@ export default function Interacciones() {
 
   const [loading, setLoading] = useState(true);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
-
   const [sidebarInteractions, setSidebarInteractions] = useState([]);
 
-  // “Nuevo chat”
   const [showPlusPanel, setShowPlusPanel] = useState(false);
   const [queryEj, setQueryEj] = useState("");
 
-  // Modal imagen
   const [showImageModal, setShowImageModal] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState("");
   const [modalImageAlt, setModalImageAlt] = useState("");
@@ -136,9 +65,7 @@ export default function Interacciones() {
   const navigate = useNavigate();
   const scrollRef = useRef(null);
 
-  const isDemo = localStorage.getItem(DEMO_KEY) === "true";
-
-  // ✅ Detectar móvil y actualizar en resize
+  // ✅ Detectar móvil
   useEffect(() => {
     const compute = () => setIsMobileView(window.innerWidth <= 640);
     compute();
@@ -146,10 +73,30 @@ export default function Interacciones() {
     return () => window.removeEventListener("resize", compute);
   }, []);
 
-  // ✅ Inicializa mostrarPanel según dispositivo (en desktop sí)
   useEffect(() => {
     if (!isMobileView) setMostrarPanel(true);
   }, [isMobileView]);
+
+  // Scroll al final
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [currentChatMessages]);
+
+  // ✅ 1) Usuario desde sesión (demo o cas)
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const me = await getCurrentUser();
+        if (me?.authenticated && me?.user?.id) setUserId(me.user.id);
+        else setUserId(null);
+      } catch {
+        setUserId(null);
+      } finally {
+        setAuthChecked(true);
+      }
+    };
+    loadUser();
+  }, []);
 
   const ejercicioActual = useMemo(() => {
     return ejerciciosDisponibles.find((e) => e._id === ejercicioActualId) || null;
@@ -178,26 +125,19 @@ export default function Interacciones() {
     setModalImageAlt("");
   }, []);
 
-  // ===== Resize sidebar (solo desktop) =====
-  const startResizing = useCallback(
-    (e) => {
-      if (isMobileView) return;
-      setIsResizing(true);
-      e.preventDefault();
-    },
-    [isMobileView]
-  );
+  // ===== Resize sidebar =====
+  const startResizing = useCallback((e) => {
+    if (isMobileView) return;
+    setIsResizing(true);
+    e.preventDefault();
+  }, [isMobileView]);
 
   const stopResizing = useCallback(() => setIsResizing(false), []);
-
-  const resizeSidebar = useCallback(
-    (e) => {
-      if (!isResizing) return;
-      const newWidth = e.clientX;
-      if (newWidth > 220 && newWidth < 460) setSidebarWidth(newWidth);
-    },
-    [isResizing]
-  );
+  const resizeSidebar = useCallback((e) => {
+    if (!isResizing) return;
+    const newWidth = e.clientX;
+    if (newWidth > 220 && newWidth < 460) setSidebarWidth(newWidth);
+  }, [isResizing]);
 
   useEffect(() => {
     if (isResizing) {
@@ -217,402 +157,262 @@ export default function Interacciones() {
     localStorage.setItem("sidebarWidth", sidebarWidth.toString());
   }, [sidebarWidth]);
 
-  // Scroll al final del chat
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [currentChatMessages]);
-
-  // ✅ 1) Cargar usuario desde sesión
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const me = await getCurrentUser();
-        if (me?.authenticated && me?.user?.id) setUserId(me.user.id);
-        else setUserId(null);
-      } catch {
-        setUserId(null);
-      } finally {
-        setAuthChecked(true);
-      }
-    };
-    loadUser();
-  }, []);
-
-  // ✅ Sidebar: REAL vs DEMO
-  const fetchSidebarInteractions = useCallback(async () => {
-    if (ejerciciosDisponibles.length === 0) return;
-
-    if (isDemo) {
-      setSidebarInteractions(rebuildDemoSidebar(ejerciciosDisponibles));
-      return;
-    }
-
+  // ✅ Sidebar real (Mongo)
+  const fetchSidebarInteractions = useCallback(async (ejercicios) => {
     if (!userId) return;
     try {
       const res = await api.get(`/api/interacciones/user/${userId}`);
       const lista = Array.isArray(res.data) ? res.data : [];
 
-      const interactionsWithDetails = lista.map((interaccion) => {
-        const ej = ejerciciosDisponibles.find((e) => e._id === interaccion.ejercicio_id);
+      const withDetails = lista.map((it) => {
+        const ej = ejercicios.find((e) => e._id === it.ejercicio_id);
         return {
-          id: interaccion._id,
-          ejercicioId: interaccion.ejercicio_id,
-          titulo: ej ? ej.titulo : `Ejercicio desconocido (${interaccion.ejercicio_id})`,
+          id: it._id,
+          ejercicioId: it.ejercicio_id,
+          titulo: ej ? ej.titulo : `Ejercicio desconocido (${it.ejercicio_id})`,
           concepto: ej ? ej.concepto : "Desconocido",
-          nivel: ej ? ej.nivel : "Desconocido",
+          nivel: ej ? ej.nivel : "—",
         };
       });
 
-      setSidebarInteractions(interactionsWithDetails);
-    } catch (error) {
-      console.error("Error cargando interacciones para el sidebar:", error);
+      setSidebarInteractions(withDetails);
+    } catch (err) {
+      console.error("Error cargando sidebar:", err);
       setSidebarInteractions([]);
     }
-  }, [ejerciciosDisponibles, userId, isDemo]);
+  }, [userId]);
 
-  // ===== Inicialización (URL / localStorage / fallback) =====
+  // ===== Inicialización =====
   useEffect(() => {
-    const fetchAndInitialize = async () => {
+    const init = async () => {
       try {
         if (!authChecked) return;
 
-        const res = await api.get("/api/ejercicios");
-        const ejercicios = Array.isArray(res.data) ? res.data : [];
+        const resEj = await api.get("/api/ejercicios");
+        const ejercicios = Array.isArray(resEj.data) ? resEj.data : [];
         setEjerciciosDisponibles(ejercicios);
 
         const queryParams = new URLSearchParams(location.search);
         const idFromUrl = queryParams.get("id");
         const interaccionIdFromUrl = queryParams.get("interaccionId");
 
-        const interaccionIdFromLocalStorage = localStorage.getItem("currentInteraccionId");
-        const exerciseIdFromLocalStorage = localStorage.getItem("ejercicioActualId");
+        const interaccionIdLS = localStorage.getItem("currentInteraccionId");
+        const ejercicioIdLS = localStorage.getItem("ejercicioActualId");
 
-        let newCurrentExerciseId = null;
-        let newCurrentInteraccionId = null;
-        let loadedMessages = [];
+        let newExerciseId = null;
+        let newInteraccionId = null;
+        let loaded = [];
 
-        // ---------------- DEMO INIT ----------------
-        if (isDemo) {
-          setSidebarInteractions(rebuildDemoSidebar(ejercicios));
-          const all = readDemoChats();
-
-          // 1) URL interaccionId
-          if (interaccionIdFromUrl && all[interaccionIdFromUrl]) {
-            newCurrentInteraccionId = interaccionIdFromUrl;
-            newCurrentExerciseId = all[interaccionIdFromUrl]?.ejercicioId || null;
-            loadedMessages = all[interaccionIdFromUrl]?.conversacion || [];
-          }
-
-          // 2) localStorage interaccionId
-          if (!newCurrentInteraccionId && interaccionIdFromLocalStorage && all[interaccionIdFromLocalStorage]) {
-            newCurrentInteraccionId = interaccionIdFromLocalStorage;
-            newCurrentExerciseId = all[interaccionIdFromLocalStorage]?.ejercicioId || null;
-            loadedMessages = all[interaccionIdFromLocalStorage]?.conversacion || [];
-          }
-
-          // 3) URL id (ejercicio)
-          if (!newCurrentExerciseId && idFromUrl && ejercicios.some((e) => e._id === idFromUrl)) {
-            newCurrentExerciseId = idFromUrl;
-          }
-
-          // 4) localStorage ejercicio
-          if (
-            !newCurrentExerciseId &&
-            exerciseIdFromLocalStorage &&
-            ejercicios.some((e) => e._id === exerciseIdFromLocalStorage)
-          ) {
-            newCurrentExerciseId = exerciseIdFromLocalStorage;
-          }
-
-          // 5) fallback
-          if (!newCurrentExerciseId && ejercicios.length > 0) {
-            newCurrentExerciseId = ejercicios[0]._id;
-          }
-
-          setEjercicioActualId(newCurrentExerciseId);
-          setCurrentInteraccionId(newCurrentInteraccionId);
-          setCurrentChatMessages(Array.isArray(loadedMessages) ? loadedMessages : []);
-          return;
-        }
-
-        // ---------------- REAL INIT ----------------
+        // 1) si viene interaccionId por URL, cargarla
         if (interaccionIdFromUrl) {
           try {
-            const interaccionRes = await api.get(`/api/interacciones/${interaccionIdFromUrl}`);
-            newCurrentInteraccionId = interaccionRes.data?._id || null;
-            newCurrentExerciseId = interaccionRes.data?.ejercicio_id || null;
-            loadedMessages = interaccionRes.data?.conversacion || [];
-          } catch (error) {
-            console.warn("Interacción URL inválida:", error);
+            const r = await api.get(`/api/interacciones/${interaccionIdFromUrl}`);
+            newInteraccionId = r.data?._id || null;
+            newExerciseId = r.data?.ejercicio_id || null;
+            loaded = Array.isArray(r.data?.conversacion) ? r.data.conversacion : [];
+          } catch (e) {
+            console.warn("Interacción URL inválida:", e);
           }
         }
 
-        if (!newCurrentInteraccionId && interaccionIdFromLocalStorage) {
+        // 2) si no, usar la del localStorage
+        if (!newInteraccionId && interaccionIdLS) {
           try {
-            const interaccionRes = await api.get(`/api/interacciones/${interaccionIdFromLocalStorage}`);
-            newCurrentInteraccionId = interaccionRes.data?._id || null;
-            newCurrentExerciseId = interaccionRes.data?.ejercicio_id || null;
-            loadedMessages = interaccionRes.data?.conversacion || [];
-          } catch (error) {
-            console.warn("Interacción localStorage inválida:", error);
+            const r = await api.get(`/api/interacciones/${interaccionIdLS}`);
+            newInteraccionId = r.data?._id || null;
+            newExerciseId = r.data?.ejercicio_id || null;
+            loaded = Array.isArray(r.data?.conversacion) ? r.data.conversacion : [];
+          } catch (e) {
+            console.warn("Interacción LS inválida:", e);
             localStorage.removeItem("currentInteraccionId");
-            localStorage.removeItem("ejercicioActualId");
           }
         }
 
-        if (!newCurrentExerciseId && idFromUrl && ejercicios.some((e) => e._id === idFromUrl)) {
-          newCurrentExerciseId = idFromUrl;
-        }
+        // 3) si no hay ejercicio todavía, usar id URL / LS / fallback
+        if (!newExerciseId && idFromUrl && ejercicios.some((e) => e._id === idFromUrl)) newExerciseId = idFromUrl;
+        if (!newExerciseId && ejercicioIdLS && ejercicios.some((e) => e._id === ejercicioIdLS)) newExerciseId = ejercicioIdLS;
+        if (!newExerciseId && ejercicios.length) newExerciseId = ejercicios[0]._id;
 
-        if (
-          !newCurrentExerciseId &&
-          exerciseIdFromLocalStorage &&
-          ejercicios.some((e) => e._id === exerciseIdFromLocalStorage)
-        ) {
-          newCurrentExerciseId = exerciseIdFromLocalStorage;
-        }
+        setEjercicioActualId(newExerciseId);
+        setCurrentInteraccionId(newInteraccionId);
+        setCurrentChatMessages(loaded);
 
-        if (!newCurrentExerciseId && ejercicios.length > 0) {
-          newCurrentExerciseId = ejercicios[0]._id;
-        }
-
-        setEjercicioActualId(newCurrentExerciseId);
-        setCurrentInteraccionId(newCurrentInteraccionId);
-        setCurrentChatMessages(Array.isArray(loadedMessages) ? loadedMessages : []);
+        // sidebar
+        await fetchSidebarInteractions(ejercicios);
       } catch (err) {
-        console.error("Error general cargando ejercicios/interacciones:", err);
+        console.error("Error inicializando Interacciones:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAndInitialize();
-  }, [location.search, userId, authChecked, isDemo]);
+    init();
+  }, [authChecked, location.search, fetchSidebarInteractions]);
 
-  // ✅ Ajuste clave móvil: si vienes con id/interaccionId, abre CHAT
-  useEffect(() => {
-    if (!isMobileView) return;
-
-    const queryParams = new URLSearchParams(location.search);
-    const idFromUrl = queryParams.get("id");
-    const interaccionIdFromUrl = queryParams.get("interaccionId");
-
-    if (idFromUrl || interaccionIdFromUrl) setMostrarPanel(false);
-    else setMostrarPanel(true);
-  }, [isMobileView, location.search]);
-
-  // ✅ FIX IMPORTANTE: sincronizar URL usando EL ESTADO (no los params antiguos)
+  // sincroniza URL con estado actual
   useEffect(() => {
     if (!ejercicioActualId) return;
 
     localStorage.setItem("ejercicioActualId", ejercicioActualId);
 
-    const queryParams = new URLSearchParams(location.search);
-    const idFromUrl = queryParams.get("id");
-    const interaccionIdFromUrl = queryParams.get("interaccionId");
+    const desired = currentInteraccionId
+      ? `/interacciones?id=${ejercicioActualId}&interaccionId=${currentInteraccionId}`
+      : `/interacciones?id=${ejercicioActualId}`;
 
-    // Queremos que la URL refleje el estado actual:
-    const desired =
-      currentInteraccionId
-        ? `/interacciones?id=${ejercicioActualId}&interaccionId=${currentInteraccionId}`
-        : `/interacciones?id=${ejercicioActualId}`;
+    const current = location.pathname + location.search;
+    if (current !== desired) navigate(desired, { replace: true });
+  }, [ejercicioActualId, currentInteraccionId, navigate]); // intencionado: no depende de location.search
 
-    // Si la URL no coincide con lo que queremos, la corregimos.
-    // (Esto evita arrastrar interaccionId antiguo cuando cambias de ejercicio)
-    const currentUrl =
-      interaccionIdFromUrl
-        ? `/interacciones?id=${idFromUrl || ""}&interaccionId=${interaccionIdFromUrl}`
-        : `/interacciones?id=${idFromUrl || ""}`;
-
-    if (currentUrl !== desired) {
-      navigate(desired, { replace: true });
-    }
-  }, [ejercicioActualId, currentInteraccionId, navigate, location.search]);
-
-  // Persist currentInteraccionId
+  // persist interaccionId
   useEffect(() => {
     if (currentInteraccionId) localStorage.setItem("currentInteraccionId", currentInteraccionId);
     else localStorage.removeItem("currentInteraccionId");
   }, [currentInteraccionId]);
 
-  // Refresca sidebar
+  // móvil: si vienes con parámetros -> abre chat
   useEffect(() => {
-    if (!loading && ejerciciosDisponibles.length > 0) {
-      fetchSidebarInteractions();
-    }
-  }, [loading, ejerciciosDisponibles, currentInteraccionId, fetchSidebarInteractions]);
+    if (!isMobileView) return;
+    const queryParams = new URLSearchParams(location.search);
+    const idFromUrl = queryParams.get("id");
+    const interaccionIdFromUrl = queryParams.get("interaccionId");
+    if (idFromUrl || interaccionIdFromUrl) setMostrarPanel(false);
+    else setMostrarPanel(true);
+  }, [isMobileView, location.search]);
 
   // ===== Acciones =====
-  const seleccionarInteraccion = useCallback(
-    async (interaccion) => {
-      setEjercicioActualId(interaccion.ejercicioId);
-      setCurrentInteraccionId(interaccion.id);
-      setLoading(true);
-      setShowPlusPanel(false);
+  const seleccionarInteraccion = useCallback(async (it) => {
+    setEjercicioActualId(it.ejercicioId);
+    setCurrentInteraccionId(it.id);
+    setLoading(true);
+    setShowPlusPanel(false);
 
-      try {
-        if (isDemo) {
-          const all = readDemoChats();
-          const conv = Array.isArray(all[interaccion.id]?.conversacion) ? all[interaccion.id].conversacion : [];
-          setCurrentChatMessages(conv);
+    try {
+      const r = await api.get(`/api/interacciones/${it.id}`);
+      const conv = Array.isArray(r.data?.conversacion) ? r.data.conversacion : [];
+      setCurrentChatMessages(conv);
 
-          navigate(`/interacciones?id=${interaccion.ejercicioId}&interaccionId=${interaccion.id}`, {
-            replace: true,
-          });
-
-          if (isMobileView) setMostrarPanel(false);
-          return;
-        }
-
-        const interaccionRes = await api.get(`/api/interacciones/${interaccion.id}`);
-        const conv = Array.isArray(interaccionRes.data?.conversacion) ? interaccionRes.data.conversacion : [];
-        setCurrentChatMessages(conv);
-
-        navigate(`/interacciones?id=${interaccion.ejercicioId}&interaccionId=${interaccion.id}`, {
-          replace: true,
-        });
-
-        if (isMobileView) setMostrarPanel(false);
-      } catch (error) {
-        console.error("Error al cargar interacción del sidebar:", error);
-        alert("No se pudo cargar la conversación. Puede que haya sido eliminada.");
-
-        if (isDemo) demoDeleteChat(interaccion.id);
-
-        setCurrentInteraccionId(null);
-        setCurrentChatMessages([]);
-        navigate(`/interacciones?id=${interaccion.ejercicioId}`, { replace: true });
-      } finally {
-        setLoading(false);
-      }
-    },
-    [navigate, isMobileView, isDemo]
-  );
-
-  const borrarInteraccion = useCallback(
-    async (interaccionIdToDelete) => {
-      if (!window.confirm("¿Eliminar esta interacción? Se borrará permanentemente.")) return;
-
-      try {
-        if (isDemo) {
-          demoDeleteChat(interaccionIdToDelete);
-          setSidebarInteractions(rebuildDemoSidebar(ejerciciosDisponibles));
-
-          if (currentInteraccionId === interaccionIdToDelete) {
-            setCurrentInteraccionId(null);
-            setCurrentChatMessages([]);
-            navigate(`/interacciones?id=${ejercicioActualId}`, { replace: true });
-          }
-          return;
-        }
-
-        await api.delete(`/api/interacciones/${interaccionIdToDelete}`);
-        await fetchSidebarInteractions();
-
-        if (currentInteraccionId === interaccionIdToDelete) {
-          setCurrentInteraccionId(null);
-          setCurrentChatMessages([]);
-          navigate(`/interacciones?id=${ejercicioActualId}`, { replace: true });
-        }
-      } catch (error) {
-        console.error("Error al borrar interacción:", error);
-        alert("No se pudo eliminar la interacción. Inténtalo de nuevo.");
-      }
-    },
-    [currentInteraccionId, ejercicioActualId, fetchSidebarInteractions, navigate, isDemo, ejerciciosDisponibles]
-  );
-
-  const startNewChatWithExercise = useCallback(
-    (exerciseId) => {
-      if (isDemo) {
-        const newId = demoCreateChat({ ejercicioId: exerciseId });
-
-        setEjercicioActualId(exerciseId);
-        setCurrentInteraccionId(newId);
-        setCurrentChatMessages([]);
-        setNuevoMensaje("");
-        setShowPlusPanel(false);
-        setQueryEj("");
-
-        // refresca sidebar
-        setSidebarInteractions(rebuildDemoSidebar(ejerciciosDisponibles));
-
-        // navega ya con el interaccionId correcto
-        navigate(`/interacciones?id=${exerciseId}&interaccionId=${newId}`, { replace: true });
-
-        // en móvil cerramos lista para ver el chat
-        if (isMobileView) setMostrarPanel(false);
-        return;
-      }
-
-      setEjercicioActualId(exerciseId);
+      navigate(`/interacciones?id=${it.ejercicioId}&interaccionId=${it.id}`, { replace: true });
+      if (isMobileView) setMostrarPanel(false);
+    } catch (e) {
+      console.error("Error al cargar interacción:", e);
+      alert("No se pudo cargar la conversación.");
       setCurrentInteraccionId(null);
       setCurrentChatMessages([]);
-      setNuevoMensaje("");
-      setShowPlusPanel(false);
-      setQueryEj("");
+      navigate(`/interacciones?id=${it.ejercicioId}`, { replace: true });
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate, isMobileView]);
 
-      navigate(`/interacciones?id=${exerciseId}`, { replace: true });
-      if (isMobileView) setMostrarPanel(false);
-    },
-    [navigate, isMobileView, isDemo, ejerciciosDisponibles]
-  );
+  const borrarInteraccion = useCallback(async (id) => {
+    if (!window.confirm("¿Eliminar esta interacción? Se borrará permanentemente.")) return;
+    try {
+      await api.delete(`/api/interacciones/${id}`);
+      // refresca sidebar
+      await fetchSidebarInteractions(ejerciciosDisponibles);
 
-  const finalizarEjercicioYRedirigir = useCallback(async () => {
-    // En demo no hacemos nada “real”
-    navigate("/dashboard");
-  }, [navigate]);
+      if (currentInteraccionId === id) {
+        setCurrentInteraccionId(null);
+        setCurrentChatMessages([]);
+        navigate(`/interacciones?id=${ejercicioActualId}`, { replace: true });
+      }
+    } catch (e) {
+      console.error("Error borrando interacción:", e);
+      alert("No se pudo eliminar.");
+    }
+  }, [currentInteraccionId, ejercicioActualId, ejerciciosDisponibles, fetchSidebarInteractions, navigate]);
+
+  const startNewChatWithExercise = useCallback((exerciseId) => {
+    setEjercicioActualId(exerciseId);
+    setCurrentInteraccionId(null);
+    setCurrentChatMessages([]);
+    setNuevoMensaje("");
+    setShowPlusPanel(false);
+    setQueryEj("");
+    navigate(`/interacciones?id=${exerciseId}`, { replace: true });
+    if (isMobileView) setMostrarPanel(false);
+  }, [navigate, isMobileView]);
+
+  const finalizarEjercicioYRedirigir = useCallback(async ({ interaccionId, exerciseId }) => {
+    try {
+      await api.post("/api/resultados/finalizar", {
+        userId,
+        exerciseId,
+        interaccionId,
+        resueltoALaPrimera: false,
+      });
+    } catch (e) {
+      console.error("Error finalizando resultado:", e);
+    } finally {
+      navigate("/dashboard");
+    }
+  }, [navigate, userId]);
 
   const enviarMensaje = useCallback(async () => {
     const ej = ejerciciosDisponibles.find((e) => e._id === ejercicioActualId);
     if (!nuevoMensaje.trim() || !ej || isSendingMessage) return;
 
     if (!userId) {
-      alert("No hay sesión iniciada. Vuelve a Login y entra en modo demo (o CAS cuando esté disponible).");
+      alert("No hay sesión iniciada. Vuelve a Login (demo o CAS).");
       return;
     }
 
     setIsSendingMessage(true);
-
     const userMessageContent = nuevoMensaje.trim();
     setNuevoMensaje("");
 
     try {
-      if (isDemo) {
-        let chatId = currentInteraccionId;
+      // pinta el mensaje del usuario en UI inmediato
+      setCurrentChatMessages((prev) => [...prev, { role: "user", content: userMessageContent }]);
 
-        if (!chatId) {
-          chatId = demoCreateChat({ ejercicioId: ej._id });
-          setCurrentInteraccionId(chatId);
-          navigate(`/interacciones?id=${ej._id}&interaccionId=${chatId}`, { replace: true });
-        } else {
-          demoEnsureChat({ chatId, ejercicioId: ej._id });
+      // si no hay interaccion, crearla
+      if (!currentInteraccionId) {
+        const r = await api.post("/api/ollama/chat/start-exercise", {
+          userId,
+          exerciseId: ej._id,
+          userMessage: userMessageContent,
+        });
+
+        const newId = r.data?.interaccionId;
+        const assistant = r.data?.assistantMessage || "";
+
+        setCurrentInteraccionId(newId);
+        setCurrentChatMessages((prev) => {
+          // ya añadimos user arriba; añadimos assistant
+          const cleanAssistant = stripFinishToken(assistant);
+          return [...prev, { role: "assistant", content: cleanAssistant }];
+        });
+
+        // refresca sidebar
+        await fetchSidebarInteractions(ejerciciosDisponibles);
+
+        if (containsFinishToken(assistant)) {
+          await finalizarEjercicioYRedirigir({ interaccionId: newId, exerciseId: ej._id });
         }
-
-        const historyAfterUser = demoAppendMessages(chatId, ej._id, [
-          { role: "user", content: userMessageContent },
-        ]);
-        setCurrentChatMessages(historyAfterUser);
-
-        setTimeout(() => {
-          const historyAfterAck = demoAppendMessages(chatId, ej._id, [
-            { role: "assistant", content: "✓ Mensaje enviado (modo demo)." },
-          ]);
-          setCurrentChatMessages(historyAfterAck);
-          setSidebarInteractions(rebuildDemoSidebar(ejerciciosDisponibles));
-        }, 250);
 
         return;
       }
 
-      // REAL (lo dejas tal cual en tu versión real; aquí no lo meto para no alargar)
-      // ...
-      // (si quieres te lo reincorporo exactamente como lo tenías)
-      await finalizarEjercicioYRedirigir();
-    } catch (error) {
-      console.error("Error al enviar mensaje:", error);
+      // si ya hay interaccion, continuar
+      const r2 = await api.post("/api/ollama/chat/message", {
+        interaccionId: currentInteraccionId,
+        userMessage: userMessageContent,
+      });
+
+      const assistant2 = r2.data?.assistantMessage || "";
+
+      setCurrentChatMessages((prev) => {
+        const cleanAssistant = stripFinishToken(assistant2);
+        return [...prev, { role: "assistant", content: cleanAssistant }];
+      });
+
+      await fetchSidebarInteractions(ejerciciosDisponibles);
+
+      if (containsFinishToken(assistant2)) {
+        await finalizarEjercicioYRedirigir({ interaccionId: currentInteraccionId, exerciseId: ej._id });
+      }
+    } catch (e) {
+      console.error("Error enviando mensaje:", e);
       setCurrentChatMessages((prev) => [
         ...prev,
         { role: "assistant", content: "Error: No se pudo conectar con el tutor." },
@@ -627,18 +427,13 @@ export default function Interacciones() {
     isSendingMessage,
     currentInteraccionId,
     userId,
-    isDemo,
-    navigate,
+    fetchSidebarInteractions,
     finalizarEjercicioYRedirigir,
   ]);
 
   // ===== Render =====
   if (!authChecked) {
-    return (
-      <div className="interacciones-cargando">
-        <p>Comprobando sesión…</p>
-      </div>
-    );
+    return <div className="interacciones-cargando"><p>Comprobando sesión…</p></div>;
   }
 
   if (!userId) {
@@ -651,11 +446,7 @@ export default function Interacciones() {
   }
 
   if (loading) {
-    return (
-      <div className="interacciones-cargando">
-        <p>Cargando ejercicios e historial…</p>
-      </div>
-    );
+    return <div className="interacciones-cargando"><p>Cargando ejercicios e historial…</p></div>;
   }
 
   if (ejerciciosDisponibles.length === 0) {
@@ -667,15 +458,11 @@ export default function Interacciones() {
   }
 
   if (!ejercicioActualId || !ejercicioActual) {
-    return (
-      <div className="interacciones-cargando">
-        <p>No se ha podido cargar el ejercicio actual.</p>
-      </div>
-    );
+    return <div className="interacciones-cargando"><p>No se ha podido cargar el ejercicio actual.</p></div>;
   }
 
   const imgSrc = ejercicioActual.imagen ? `/static/${ejercicioActual.imagen}` : "/placeholder-ejercicio.png";
-  const inputPlaceholder = isDemo ? "Escribe tu mensaje…" : isSendingMessage ? "Pensando…" : "Escribe tu mensaje…";
+  const inputPlaceholder = isSendingMessage ? "Pensando…" : "Escribe tu mensaje…";
 
   return (
     <div className="interacciones-scope">
@@ -694,10 +481,7 @@ export default function Interacciones() {
               <button
                 className="btn-icon"
                 title={showPlusPanel ? "Cerrar Nuevo chat" : "Nuevo chat"}
-                onClick={() => {
-                  setShowPlusPanel((v) => !v);
-                  setQueryEj("");
-                }}
+                onClick={() => { setShowPlusPanel((v) => !v); setQueryEj(""); }}
               >
                 ＋
               </button>
@@ -708,14 +492,7 @@ export default function Interacciones() {
             <div className="plus-panel">
               <div className="plus-panel-header">
                 <h3 className="plus-panel-title">Nuevo chat</h3>
-                <button
-                  className="plus-panel-close"
-                  title="Cerrar"
-                  onClick={() => {
-                    setShowPlusPanel(false);
-                    setQueryEj("");
-                  }}
-                >
+                <button className="plus-panel-close" title="Cerrar" onClick={() => { setShowPlusPanel(false); setQueryEj(""); }}>
                   ✕
                 </button>
               </div>
@@ -731,13 +508,7 @@ export default function Interacciones() {
               <div className="plus-list">
                 {ejerciciosFiltrados.length > 0 ? (
                   ejerciciosFiltrados.map((e) => (
-                    <div
-                      key={e._id}
-                      className="plus-item"
-                      onClick={() => startNewChatWithExercise(e._id)}
-                      role="button"
-                      tabIndex={0}
-                    >
+                    <div key={e._id} className="plus-item" onClick={() => startNewChatWithExercise(e._id)} role="button" tabIndex={0}>
                       <div className="plus-item-title">{e.titulo}</div>
                       <div className="plus-item-meta">
                         {e.concepto} · Nivel {e.nivel}
@@ -764,18 +535,13 @@ export default function Interacciones() {
                 >
                   <div className="sidebar-item-content">
                     <div className="sidebar-item-title">{i.titulo}</div>
-                    <div className="sidebar-item-sub">
-                      {i.concepto} · Nivel {i.nivel}
-                    </div>
+                    <div className="sidebar-item-sub">{i.concepto} · Nivel {i.nivel}</div>
                   </div>
 
                   <button
                     className="sidebar-item-trash"
                     title="Eliminar interacción"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      borrarInteraccion(i.id);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); borrarInteraccion(i.id); }}
                   >
                     <TrashIcon className="h-5 w-5" />
                   </button>
@@ -824,13 +590,7 @@ export default function Interacciones() {
             )}
           </div>
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              enviarMensaje();
-            }}
-            className="chat-inputbar"
-          >
+          <form onSubmit={(e) => { e.preventDefault(); enviarMensaje(); }} className="chat-inputbar">
             <input
               type="text"
               value={nuevoMensaje}
