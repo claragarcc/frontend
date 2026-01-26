@@ -15,6 +15,7 @@ import {
   ArrowRightIcon
 } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
+import { getCurrentUser } from "../services/auth";
 
 const initialState = {
   resumenSemanal: {
@@ -31,49 +32,51 @@ const initialState = {
   erroresFrecuentes: [],
   recomendacion: {
     titulo: "",
-    motivo:
-      "Haz un ejercicio para que el tutor pueda recomendarte una práctica personalizada.",
+    motivo: "Haz un ejercicio para que el tutor pueda recomendarte una práctica personalizada.",
     ejercicioId: null,
     concepto: ""
   }
 };
 
-const DEMO_KEY = "tv_demo_enabled";
+// =========================
+// DEMO (DESACTIVADO)
+// =========================
+// const DEMO_KEY = "tv_demo_enabled";
 
-const demoData = {
-  resumenSemanal: {
-    ejerciciosCompletados: 6,
-    conceptosDistintos: 3,
-    rachaDias: 4
-  },
-  eficienciaPorConcepto: [
-    { concepto: "Ley de Ohm", interacciones: 6 },
-    { concepto: "Potencia eléctrica", interacciones: 5 },
-    { concepto: "Serie / paralelo", interacciones: 4 },
-    { concepto: "Divisor de tensión", interacciones: 3 }
-  ],
-  ultimaSesion: {
-    tituloEjercicio: "Ejercicio 12 · Resistencias en serie",
-    analisis:
-      "Has planteado bien la relación V = I·R, pero te ha costado identificar qué resistencia equivalente usar.",
-    consejo:
-      "Antes de calcular I, escribe R_eq y justifica si es suma (serie) o inversa (paralelo)."
-  },
-  erroresFrecuentes: [
-    { etiqueta: "CA_OHM_01", texto: "Confunde tensión (V) e intensidad (I)", veces: 3 },
-    { etiqueta: "CA_SERPAR_02", texto: "Aplica mal la resistencia equivalente", veces: 2 },
-    { etiqueta: "CA_UNITS_01", texto: "Olvida unidades o prefijos (mA, kΩ)", veces: 2 }
-  ],
-  recomendacion: {
-    titulo: "Refuerza: Resistencia equivalente en serie/paralelo",
-    motivo:
-      "En tus últimas interacciones se repite un error al combinar resistencias. Practica un ejercicio corto guiado.",
-    ejercicioId: "DEMO_EJ_001",
-    concepto: "Serie / paralelo"
-  }
-};
+// const demoData = {
+//   resumenSemanal: {
+//     ejerciciosCompletados: 6,
+//     conceptosDistintos: 3,
+//     rachaDias: 4
+//   },
+//   eficienciaPorConcepto: [
+//     { concepto: "Ley de Ohm", interacciones: 6 },
+//     { concepto: "Potencia eléctrica", interacciones: 5 },
+//     { concepto: "Serie / paralelo", interacciones: 4 },
+//     { concepto: "Divisor de tensión", interacciones: 3 }
+//   ],
+//   ultimaSesion: {
+//     tituloEjercicio: "Ejercicio 12 · Resistencias en serie",
+//     analisis:
+//       "Has planteado bien la relación V = I·R, pero te ha costado identificar qué resistencia equivalente usar.",
+//     consejo:
+//       "Antes de calcular I, escribe R_eq y justifica si es suma (serie) o inversa (paralelo)."
+//   },
+//   erroresFrecuentes: [
+//     { etiqueta: "CA_OHM_01", texto: "Confunde tensión (V) e intensidad (I)", veces: 3 },
+//     { etiqueta: "CA_SERPAR_02", texto: "Aplica mal la resistencia equivalente", veces: 2 },
+//     { etiqueta: "CA_UNITS_01", texto: "Olvida unidades o prefijos (mA, kΩ)", veces: 2 }
+//   ],
+//   recomendacion: {
+//     titulo: "Refuerza: Resistencia equivalente en serie/paralelo",
+//     motivo:
+//       "En tus últimas interacciones se repite un error al combinar resistencias. Practica un ejercicio corto guiado.",
+//     ejercicioId: "DEMO_EJ_001",
+//     concepto: "Serie / paralelo"
+//   }
+// };
 
-// Merge profundo + saneo de tipos para evitar “va raro”
+// Merge profundo + saneo de tipos
 function mergeDashboardData(apiData) {
   const d = apiData || {};
 
@@ -99,40 +102,39 @@ function mergeDashboardData(apiData) {
   return {
     ...initialState,
     ...d,
-
     resumenSemanal: {
       ...initialState.resumenSemanal,
       ...(d.resumenSemanal || {})
     },
-
     ultimaSesion: {
       ...initialState.ultimaSesion,
       ...(d.ultimaSesion || {})
     },
-
     recomendacion: {
       ...initialState.recomendacion,
       ...(d.recomendacion || {})
     },
-
     eficienciaPorConcepto,
     erroresFrecuentes
   };
 }
 
 export default function Dashboard() {
-  const initialIsDemo = localStorage.getItem(DEMO_KEY) === "true";
+  // =========================
+  // DEMO (DESACTIVADO)
+  // =========================
+  // const initialIsDemo = localStorage.getItem(DEMO_KEY) === "true";
+  // const [isDemo] = useState(initialIsDemo);
 
-  const [isDemo] = useState(initialIsDemo);
-  const [data, setData] = useState(
-    initialIsDemo ? mergeDashboardData(demoData) : initialState
-  );
-  const [loading, setLoading] = useState(!initialIsDemo);
+  // ✅ SOLO REAL
+  const isDemo = false;
+
+  const [data, setData] = useState(initialState);
+  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
   const navigate = useNavigate();
 
-  const MOCK_USER_ID = "681cd8217918fbc4fc7a626f";
   const BACKEND = import.meta.env.VITE_BACKEND_URL;
 
   const backendBase = useMemo(() => {
@@ -144,38 +146,59 @@ export default function Dashboard() {
     let ignore = false;
     setLoadError(null);
 
-    if (isDemo) {
-      setData(mergeDashboardData(demoData));
-      setLoading(false);
-      return () => {
-        ignore = true;
-      };
-    }
+    // =========================
+    // DEMO (DESACTIVADO)
+    // =========================
+    // if (isDemo) {
+    //   setData(mergeDashboardData(demoData));
+    //   setLoading(false);
+    //   return () => { ignore = true; };
+    // }
 
     if (!backendBase) {
       setData(initialState);
       setLoading(false);
       setLoadError("No está configurado VITE_BACKEND_URL.");
-      return () => {
-        ignore = true;
-      };
+      return () => { ignore = true; };
     }
 
-    setLoading(true);
+    const run = async () => {
+      try {
+        setLoading(true);
 
-    axios
-      .get(`${backendBase}/api/progreso/${MOCK_USER_ID}`, {
-        withCredentials: true,
-        timeout: 12000
-      })
-      .then((res) => {
+        // 1) Usuario real
+        const me = await getCurrentUser();
+        const uid = me?.authenticated && me?.user?.id ? me.user.id : null;
+
+        if (!uid) {
+          if (!ignore) {
+            setData(initialState);
+            setLoadError("No hay sesión iniciada.");
+          }
+          return;
+        }
+
+        // 2) Progreso real
+        const res = await axios.get(`${backendBase}/api/progreso/${uid}`, {
+          withCredentials: true,
+          timeout: 12000
+        });
+
         if (ignore) return;
-        if (localStorage.getItem(DEMO_KEY) === "true") return;
+
+        // =========================
+        // DEMO (DESACTIVADO)
+        // =========================
+        // if (localStorage.getItem(DEMO_KEY) === "true") return;
+
         setData(mergeDashboardData(res.data));
-      })
-      .catch((error) => {
+      } catch (error) {
         if (ignore) return;
-        if (localStorage.getItem(DEMO_KEY) === "true") return;
+
+        // =========================
+        // DEMO (DESACTIVADO)
+        // =========================
+        // if (localStorage.getItem(DEMO_KEY) === "true") return;
 
         console.error("Error al cargar los datos del progreso:", error);
         setData(initialState);
@@ -188,16 +211,21 @@ export default function Dashboard() {
               : "No se pudo conectar con el backend para cargar el progreso.";
 
         setLoadError(msg);
-      })
-      .finally(() => {
+      } finally {
         if (ignore) return;
-        if (localStorage.getItem(DEMO_KEY) === "true") return;
-        setLoading(false);
-      });
 
-    return () => {
-      ignore = true;
+        // =========================
+        // DEMO (DESACTIVADO)
+        // =========================
+        // if (localStorage.getItem(DEMO_KEY) === "true") return;
+
+        setLoading(false);
+      }
     };
+
+    run();
+
+    return () => { ignore = true; };
   }, [backendBase, isDemo]);
 
   const hasChartData = (data.eficienciaPorConcepto || []).length > 0;
@@ -212,8 +240,10 @@ export default function Dashboard() {
     localStorage.removeItem("ejercicioActualId");
 
     const recId = data?.recomendacion?.ejercicioId;
+
+    // ✅ Interacciones.jsx lee queryParams.get("id")
     if (recId) {
-      navigate(`/interacciones?ejercicioId=${encodeURIComponent(recId)}`);
+      navigate(`/interacciones?id=${encodeURIComponent(recId)}`, { replace: true });
       return;
     }
     navigate("/ejercicios", { replace: true });
@@ -226,14 +256,8 @@ export default function Dashboard() {
   return (
     <div className="dashboard-scope">
       <header className="dashboard-header container-app">
-        <h1 className="dashboard-title">Tu Progreso {isDemo ? "(DEMO)" : ""}</h1>
+        <h1 className="dashboard-title">Tu Progreso</h1>
         <div className="dashboard-acento" />
-
-        {isDemo && (
-          <div className="dashboard-demo-badge">
-            Modo demostración · Datos simulados para pruebas de usabilidad
-          </div>
-        )}
 
         {!isDemo && loadError && (
           <div className="dashboard-demo-badge" style={{ borderLeftColor: "var(--color-primary)" }}>
@@ -331,12 +355,8 @@ export default function Dashboard() {
                     margin={{ top: 8, right: 16, left: 16, bottom: 8 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-
-                    {/* interacciones es MEDIA ⇒ permitimos decimales */}
                     <XAxis type="number" allowDecimals />
-
                     <YAxis type="category" dataKey="concepto" width={140} tick={{ fontSize: 10 }} />
-
                     <Tooltip
                       formatter={(value) => [`${Number(value).toFixed(1)}`, "Mensajes medios"]}
                       cursor={{ fill: "rgba(231,38,33,0.06)" }}
@@ -346,7 +366,6 @@ export default function Dashboard() {
                         borderRadius: "12px"
                       }}
                     />
-
                     <Bar
                       dataKey="interacciones"
                       name="Mensajes medios"

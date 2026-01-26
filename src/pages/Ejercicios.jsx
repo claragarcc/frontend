@@ -1,6 +1,6 @@
+// frontend/src/pages/Ejercicios.jsx
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMemo, useEffect, useState, useCallback, useRef } from "react";
-import axios from "axios";
 
 import { Disclosure, DisclosureButton, DisclosurePanel } from "@headlessui/react";
 import {
@@ -9,6 +9,9 @@ import {
   MagnifyingGlassIcon,
   CheckIcon,
 } from "@heroicons/react/20/solid";
+
+import { api } from "../services/api";
+import { getCurrentUser } from "../services/auth";
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -19,11 +22,15 @@ const LOCAL_STORAGE_FILTERS_KEY = "ejerciciosPageFilters";
 export default function EjerciciosPage() {
   const { search } = useLocation();
   const navigate = useNavigate();
+
+  const [loadingEjercicios, setLoadingEjercicios] = useState(true);
+  const [errorEjercicios, setErrorEjercicios] = useState(null);
+
   const [allEjercicios, setAllEjercicios] = useState([]);
   const [completedIds, setCompletedIds] = useState(new Set());
 
-  const API = import.meta.env.VITE_BACKEND_URL;
-  const MOCK_USER_ID = "681cd8217918fbc4fc7a626f";
+  const [userId, setUserId] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   // Filtros
   const [asig, setAsig] = useState("");
@@ -42,27 +49,104 @@ export default function EjerciciosPage() {
 
   const isInitialMount = useRef(true);
 
+  // 1) Cargar sesión (userId real)
   useEffect(() => {
-    const fetchData = async () => {
+    const loadUser = async () => {
       try {
-        const [ejerciciosRes, completedRes] = await Promise.all([
-          axios.get(`/api/ejercicios`),
-          axios.get(`/api/resultados/completed/${MOCK_USER_ID}`),
-        ]);
+        const me = await getCurrentUser();
+        if (me?.authenticated && me?.user?.id) setUserId(me.user.id);
+        else setUserId(null);
+      } catch {
+        setUserId(null);
+      } finally {
+        setAuthChecked(true);
+      }
+    };
+    loadUser();
+  }, []);
 
-        const ejerciciosLimpios = (ejerciciosRes.data || []).map((ej) => ({
+  // Helper: normaliza IDs a string para comparar bien en Set
+  const normalizeId = (x) => {
+    if (!x) return null;
+    if (typeof x === "string" || typeof x === "number") return String(x);
+    if (x?._id) return String(x._id);
+    if (x?.ejercicio_id) return String(x.ejercicio_id);
+    return null;
+  };
+
+  // 2) Cargar ejercicios + completados del usuario real (sin romper si completados falla)
+  useEffect(() => {
+    const ctrl = new AbortController();
+
+    const fetchData = async () => {
+      setLoadingEjercicios(true);
+      setErrorEjercicios(null);
+
+      try {
+        // A) Ejercicios (esto sí es crítico)
+        const ejerciciosRes = await api.get("/api/ejercicios", { signal: ctrl.signal });
+        const ejerciciosRaw = Array.isArray(ejerciciosRes.data) ? ejerciciosRes.data : [];
+
+        const ejerciciosLimpios = ejerciciosRaw.map((ej) => ({
           ...ej,
           nivel: parseInt(ej.nivel, 10) || 0,
         }));
 
         setAllEjercicios(ejerciciosLimpios);
-        setCompletedIds(new Set(completedRes.data || []));
+
+        // B) Completados (no crítico, pero necesario para el tick)
+        if (!userId) {
+          setCompletedIds(new Set());
+          return;
+        }
+
+        // ✅ Fallback de rutas (porque ahora mismo te da 404 en /completed)
+        const candidates = [
+          `/api/resultados/completed/${userId}`,
+          `/api/resultados/completados/${userId}`,
+          `/api/resultados/completed?userId=${userId}`,
+          `/api/resultados/completados?userId=${userId}`,
+        ];
+
+        let completedData = null;
+        for (const url of candidates) {
+          try {
+            const r = await api.get(url, { signal: ctrl.signal });
+            completedData = r.data;
+            break;
+          } catch (e) {
+            // si es 404, probamos la siguiente; si es otra cosa, también probamos pero sin romper
+          }
+        }
+
+        if (!completedData) {
+          // No hay endpoint válido ahora mismo -> sin ticks, pero la pantalla funciona
+          setCompletedIds(new Set());
+          return;
+        }
+
+        const raw = Array.isArray(completedData) ? completedData : [];
+        const normalized = raw.map(normalizeId).filter(Boolean);
+        setCompletedIds(new Set(normalized));
       } catch (err) {
-        console.error("Error al obtener los datos de la página de ejercicios:", err);
+        console.error("Error al obtener ejercicios:", err);
+        setErrorEjercicios("No se pudieron cargar los ejercicios. Revisa consola y rutas /api.");
+        setAllEjercicios([]);
+        setCompletedIds(new Set());
+      } finally {
+        setLoadingEjercicios(false);
       }
     };
+
+    if (!authChecked) return;
     fetchData();
-  }, [API, MOCK_USER_ID]);
+
+    return () => ctrl.abort();
+  }, [authChecked, userId]);
+
+  // Sin sesión -> no bloqueamos ejercicios, pero avisamos
+  // (si quieres bloquearlo, dímelo y lo cambio)
+  const showNoSession = authChecked && !userId;
 
   useEffect(() => {
     const queryParams = new URLSearchParams(search);
@@ -90,7 +174,7 @@ export default function EjerciciosPage() {
     if (isInitialMount.current) {
       isInitialMount.current = false;
     }
-  }, [search]);
+  }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleConcepto = (c) => {
     setConceptosSeleccionados((prev) =>
@@ -147,6 +231,12 @@ export default function EjerciciosPage() {
       <h2 className="titulo centrado text-2xl font-semibold mb-6">
         {filtrosActivos ? "Ejercicios filtrados" : "Todos los ejercicios"}
       </h2>
+
+      {showNoSession && (
+        <div className="mensaje-vacio text-center p-3 text-gray-600 mb-4">
+          <p>No hay sesión iniciada. Inicia sesión para ver tus ejercicios completados (ticks).</p>
+        </div>
+      )}
 
       {/* FILTROS */}
       <Disclosure
@@ -229,7 +319,7 @@ export default function EjerciciosPage() {
                   min={0}
                   max={5}
                   value={nivel}
-                  onChange={(e) => setNivel(parseInt(e.target.value))}
+                  onChange={(e) => setNivel(parseInt(e.target.value, 10))}
                   className="w-full accent-rojo"
                 />
                 <div className="flex justify-between text-sm text-gray-500 mt-1">
@@ -262,12 +352,20 @@ export default function EjerciciosPage() {
       </Disclosure>
 
       {/* LISTA */}
-      {ejerciciosFiltrados.length === 0 ? (
+      {loadingEjercicios ? (
+        <div className="mensaje-vacio text-center p-4 text-gray-600 mt-8">
+          <p>Cargando ejercicios...</p>
+        </div>
+      ) : errorEjercicios ? (
+        <div className="mensaje-vacio text-center p-4 text-gray-600 mt-8">
+          <p>{errorEjercicios}</p>
+        </div>
+      ) : ejerciciosFiltrados.length === 0 ? (
         <div className="mensaje-vacio text-center p-4 text-gray-600 mt-8">
           <p>
             {filtrosActivos
               ? "No se encontraron ejercicios con los filtros seleccionados."
-              : "Cargando ejercicios..."}
+              : "No hay ejercicios disponibles todavía."}
           </p>
         </div>
       ) : (
@@ -283,94 +381,89 @@ export default function EjerciciosPage() {
           </div>
 
           <div className="ej-body">
-            {ejerciciosFiltrados.map((ejercicio) => (
-              <Disclosure as="div" key={ejercicio._id} className="ej-item">
-                {({ open }) => (
-                  <>
-                    <div
-                      className={classNames(
-                        "ej-row",
-                        open ? "ej-row-open" : ""
-                      )}
-                    >
-                      {/* Toggle */}
-                      <DisclosureButton className="ej-toggle">
-                        <span className="sr-only">Ver detalles</span>
-                        {open ? (
-                          <ChevronUpIcon className="h-5 w-5" />
-                        ) : (
-                          <ChevronDownIcon className="h-5 w-5" />
-                        )}
-                      </DisclosureButton>
+            {ejerciciosFiltrados.map((ejercicio) => {
+              const isDone = completedIds.has(String(ejercicio._id));
 
-                      {/* Zona clicable */}
-                      <div
-                        className="ej-main"
-                        onClick={() => handleRowClick(ejercicio._id)}
-                        role="button"
-                        tabIndex={0}
-                      >
-                        {/* MÓVIL: título + metainfo debajo */}
-                        <div className="ej-title">
-                          {ejercicio.titulo}
+              return (
+                <Disclosure as="div" key={ejercicio._id} className="ej-item">
+                  {({ open }) => (
+                    <>
+                      <div className={classNames("ej-row", open ? "ej-row-open" : "")}>
+                        <DisclosureButton className="ej-toggle">
+                          <span className="sr-only">Ver detalles</span>
+                          {open ? (
+                            <ChevronUpIcon className="h-5 w-5" />
+                          ) : (
+                            <ChevronDownIcon className="h-5 w-5" />
+                          )}
+                        </DisclosureButton>
+
+                        <div
+                          className="ej-main"
+                          onClick={() => handleRowClick(ejercicio._id)}
+                          role="button"
+                          tabIndex={0}
+                        >
+                          <div className="ej-title">{ejercicio.titulo}</div>
+
+                          <div className="ej-meta">
+                            <span className="ej-meta-item">{ejercicio.asignatura}</span>
+                            <span className="ej-meta-sep">·</span>
+                            <span className="ej-meta-item">{ejercicio.concepto}</span>
+                          </div>
+
+                          <div className="ej-asig">{ejercicio.asignatura}</div>
+                          <div className="ej-concept">{ejercicio.concepto}</div>
                         </div>
 
-                        <div className="ej-meta">
-                          <span className="ej-meta-item">{ejercicio.asignatura}</span>
-                          <span className="ej-meta-sep">·</span>
-                          <span className="ej-meta-item">{ejercicio.concepto}</span>
-                        </div>
-
-                        {/* DESKTOP: columnas separadas (se ven vía CSS) */}
-                        <div className="ej-asig">{ejercicio.asignatura}</div>
-                        <div className="ej-concept">{ejercicio.concepto}</div>
-                      </div>
-
-                      {/* Nivel + completado */}
-                      <div className="ej-right">
-                        <span className="ej-level-pill">{ejercicio.nivel}</span>
-                        {completedIds.has(ejercicio._id) && (
-                          <span className="ej-done" title="Ejercicio completado">
-                            <CheckIcon className="h-5 w-5" />
+                        <div className="ej-right">
+                          {/* ✅ centrado del número (si tu CSS no lo hace) */}
+                          <span className="ej-level-pill" style={{ display: "grid", placeItems: "center" }}>
+                            {ejercicio.nivel}
                           </span>
-                        )}
+
+                          {isDone ? (
+                            <span className="ej-done" title="Ejercicio completado">
+                              <CheckIcon className="h-5 w-5" />
+                            </span>
+                          ) : (
+                            <span className="ej-done ej-done-empty" aria-hidden="true" />
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    <DisclosurePanel className="ej-panel">
-  <div className="ej-panel-layout">
+                      <DisclosurePanel className="ej-panel">
+                        <div className="ej-panel-layout">
+                          <div className="ej-panel-media">
+                            {ejercicio.imagen && (
+                              <img
+                                src={`/static/${ejercicio.imagen}`}
+                                alt={ejercicio.titulo}
+                                className="ej-panel-img"
+                              />
+                            )}
+                          </div>
 
-    <div className="ej-panel-media">
-      {ejercicio.imagen && (
-        <img
-          src={`${API}/static/${ejercicio.imagen}`}
-          alt={ejercicio.titulo}
-          className="ej-panel-img"
-        />
-      )}
-    </div>
+                          <div className="ej-panel-content">
+                            <h4 className="ej-panel-title">Enunciado</h4>
+                            <p className="ej-panel-text">{ejercicio.enunciado}</p>
 
-    <div className="ej-panel-content">
-      <h4 className="ej-panel-title">Enunciado</h4>
-      <p className="ej-panel-text">{ejercicio.enunciado}</p>
-
-      <div className="ej-panel-actions">
-        <button
-          className="ej-start-btn"
-          onClick={() => handleRowClick(ejercicio._id)}
-        >
-          Comenzar ›
-        </button>
-      </div>
-    </div>
-
-  </div>
-</DisclosurePanel>
-
-                  </>
-                )}
-              </Disclosure>
-            ))}
+                            <div className="ej-panel-actions">
+                              <button
+                                className="ej-start-btn"
+                                onClick={() => handleRowClick(ejercicio._id)}
+                              >
+                                Comenzar ›
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </DisclosurePanel>
+                    </>
+                  )}
+                </Disclosure>
+              );
+            })}
           </div>
         </div>
       )}

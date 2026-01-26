@@ -662,6 +662,24 @@ input:focus, textarea:focus, select:focus {
    (tabla moderna, menos aire, acento rojo sobrio)
    ========================================================= */
 
+   .ej-level-pill {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+  .ej-done-empty {
+  width: 20px;  /* aprox h-5 */
+  height: 20px;
+  display: inline-block;
+  opacity: 0;
+}
+ 
 .busqueda-scope {
   background-color: var(--color-bg-app);
   min-height: calc(100vh - 4rem);
@@ -1622,8 +1640,9 @@ input:focus, textarea:focus, select:focus {
 }
 
 .chat-top-img{
-  width: 92px;
-  height: 92px;
+ width: clamp(140px, 22vw, 300px);
+  height: auto;
+  max-height: 220px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-bg-disabled);

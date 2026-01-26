@@ -1,4 +1,4 @@
-// /interacciones.jsx
+// frontend/src/pages/Interacciones.jsx
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
@@ -6,12 +6,54 @@ import { getCurrentUser } from "../services/auth";
 import { api } from "../services/api";
 
 const FIN_TOKEN = "<FIN_EJERCICIO>";
+
 function containsFinishToken(text) {
   return typeof text === "string" && text.includes(FIN_TOKEN);
 }
-function stripFinishToken(text) {
+
+// ✅ Limpieza robusta para streaming + re-entrada (token partido o pegado al final)
+function stripFinishTokenStreaming(text) {
   if (typeof text !== "string") return "";
-  return text.replaceAll(FIN_TOKEN, "").trim();
+
+  let out = text.replaceAll(FIN_TOKEN, "");
+
+  // recorta prefijos del token si están al final (token partido)
+  for (let k = FIN_TOKEN.length - 1; k > 0; k--) {
+    const prefix = FIN_TOKEN.slice(0, k);
+    if (out.endsWith(prefix)) {
+      out = out.slice(0, -k);
+      break;
+    }
+  }
+
+  return out.trimEnd();
+}
+
+// ✅ limpia tokens en conversaciones cargadas desde BD (re-entrada)
+function sanitizeConversation(conversacion) {
+  if (!Array.isArray(conversacion)) return [];
+  return conversacion.map((m) => {
+    if (!m || typeof m !== "object") return m;
+    if (m.role !== "assistant") return m;
+    return { ...m, content: stripFinishTokenStreaming(m.content || "") };
+  });
+}
+
+function safeDateLabel(d) {
+  try {
+    if (!d) return "";
+    const dt = new Date(d);
+    if (Number.isNaN(dt.getTime())) return "";
+    return dt.toLocaleString("es-ES", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
 }
 
 /**
@@ -19,7 +61,14 @@ function stripFinishToken(text) {
  * - soporta eventos con varias líneas data:
  * - soporta [DONE], {chunk}, {interaccionId}, {error}
  */
-async function enviarMensajeStream({ payload, signal, onInteraccionId, onChunk, onDone, onError }) {
+async function enviarMensajeStream({
+  payload,
+  signal,
+  onInteraccionId,
+  onChunk,
+  onDone,
+  onError,
+}) {
   try {
     const resp = await fetch("/api/ollama/chat/stream", {
       method: "POST",
@@ -31,7 +80,6 @@ async function enviarMensajeStream({ payload, signal, onInteraccionId, onChunk, 
       signal,
     });
 
-
     if (!resp.ok) {
       const txt = await resp.text().catch(() => "");
       throw new Error(`HTTP ${resp.status} ${resp.statusText} ${txt}`);
@@ -42,12 +90,20 @@ async function enviarMensajeStream({ payload, signal, onInteraccionId, onChunk, 
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
 
+    // ✅ evita que onDone se dispare dos veces
+    let doneCalled = false;
+    const safeDone = () => {
+      if (doneCalled) return;
+      doneCalled = true;
+      onDone?.();
+    };
+
     const handleData = (raw) => {
       const s = String(raw ?? "").trim();
       if (!s) return;
 
       if (s === "[DONE]") {
-        onDone?.();
+        safeDone();
         return;
       }
 
@@ -93,8 +149,9 @@ async function enviarMensajeStream({ payload, signal, onInteraccionId, onChunk, 
     }
 
     process();
-    onDone?.();
+    safeDone();
   } catch (e) {
+    if (e?.name === "AbortError") return; // ✅ abort ≠ error real
     onError?.(e);
   }
 }
@@ -122,6 +179,10 @@ export default function Interacciones() {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const sendingRef = useRef(false);
 
+  // ✅ NUEVO: indicador discreto “pensando…”
+  const [isTutorThinking, setIsTutorThinking] = useState(false);
+  const firstChunkRef = useRef(false);
+
   const [sidebarInteractions, setSidebarInteractions] = useState([]);
   const [showPlusPanel, setShowPlusPanel] = useState(false);
   const [queryEj, setQueryEj] = useState("");
@@ -130,12 +191,18 @@ export default function Interacciones() {
   const [modalImageUrl, setModalImageUrl] = useState("");
   const [modalImageAlt, setModalImageAlt] = useState("");
 
+  // ✅ modal sutil de intentos
+  const [showAttemptsModal, setShowAttemptsModal] = useState(false);
+
   const location = useLocation();
   const navigate = useNavigate();
   const scrollRef = useRef(null);
 
   // abort del stream actual si el usuario cambia de chat (o refresca)
   const activeAbortRef = useRef(null);
+
+  // ✅ evita procesar FIN más de una vez por mensaje
+  const finHandledRef = useRef(false);
 
   // móvil
   useEffect(() => {
@@ -151,7 +218,7 @@ export default function Interacciones() {
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [currentChatMessages]);
+  }, [currentChatMessages, isTutorThinking]);
 
   useEffect(() => {
     sendingRef.current = isSendingMessage;
@@ -187,6 +254,19 @@ export default function Interacciones() {
       return titulo.includes(q) || concepto.includes(q) || nivel.includes(q);
     });
   }, [queryEj, ejerciciosDisponibles]);
+
+  // ✅ lista de "intentos" para el ejercicio actual (se ve SOLO en el modal)
+  const intentosEjercicioActual = useMemo(() => {
+    if (!ejercicioActualId) return [];
+    const list = (sidebarInteractions || []).filter((it) => it.ejercicioId === ejercicioActualId);
+
+    // más reciente primero si tenemos fecha
+    return [...list].sort((a, b) => {
+      const da = a?.fecha ? new Date(a.fecha).getTime() : 0;
+      const db = b?.fecha ? new Date(b.fecha).getTime() : 0;
+      return db - da;
+    });
+  }, [sidebarInteractions, ejercicioActualId]);
 
   const openImageModal = useCallback((imageUrl, imageAlt) => {
     setModalImageUrl(imageUrl);
@@ -250,6 +330,8 @@ export default function Interacciones() {
           return {
             id: it._id,
             ejercicioId: it.ejercicio_id,
+            // fecha para ordenar intentos
+            fecha: it.fin || it.inicio || it.updatedAt || it.createdAt || it.fecha || null,
             titulo: ej ? ej.titulo : `Ejercicio desconocido (${it.ejercicio_id})`,
             concepto: ej ? ej.concepto : "Desconocido",
             nivel: ej ? ej.nivel : "—",
@@ -269,7 +351,10 @@ export default function Interacciones() {
     const r = await api.get(`/api/interacciones/${interaccionIdToLoad}`);
     const newInteraccionId = r.data?._id || null;
     const newExerciseId = r.data?.ejercicio_id || null;
-    const loaded = Array.isArray(r.data?.conversacion) ? r.data.conversacion : [];
+
+    // ✅ IMPORTANTE: sanitizar conversación cargada (aquí es donde te aparecía el token al re-entrar)
+    const loadedRaw = Array.isArray(r.data?.conversacion) ? r.data.conversacion : [];
+    const loaded = sanitizeConversation(loadedRaw);
 
     if (newExerciseId && ejercicios.some((e) => e._id === newExerciseId)) {
       setEjercicioActualId(newExerciseId);
@@ -350,12 +435,15 @@ export default function Interacciones() {
 
   const seleccionarInteraccion = useCallback(
     async (it) => {
-      // abort stream si existe
       if (activeAbortRef.current) {
         try { activeAbortRef.current.abort(); } catch {}
         activeAbortRef.current = null;
       }
       setIsSendingMessage(false);
+
+      // ✅ NUEVO: si cambias de chat, quita “pensando…”
+      setIsTutorThinking(false);
+      firstChunkRef.current = false;
 
       setLoading(true);
       setShowPlusPanel(false);
@@ -371,6 +459,14 @@ export default function Interacciones() {
       }
     },
     [navigate, ejerciciosDisponibles, loadInteraccion, isMobileView]
+  );
+
+  const abrirIntento = useCallback(
+    async (it) => {
+      setShowAttemptsModal(false);
+      await seleccionarInteraccion(it);
+    },
+    [seleccionarInteraccion]
   );
 
   const borrarInteraccion = useCallback(
@@ -395,12 +491,15 @@ export default function Interacciones() {
 
   const startNewChatWithExercise = useCallback(
     (exerciseId) => {
-      // abort stream si existe
       if (activeAbortRef.current) {
         try { activeAbortRef.current.abort(); } catch {}
         activeAbortRef.current = null;
       }
       setIsSendingMessage(false);
+
+      // ✅ NUEVO: al abrir chat nuevo, quita “pensando…”
+      setIsTutorThinking(false);
+      firstChunkRef.current = false;
 
       setEjercicioActualId(exerciseId);
       setCurrentInteraccionId(null);
@@ -414,154 +513,160 @@ export default function Interacciones() {
     [navigate, isMobileView]
   );
 
-  const finalizarEjercicioYRedirigir = useCallback(
-    async ({ interaccionId, exerciseId }) => {
-      try {
-        await api.post("/api/resultados/finalizar", {
-          userId,
-          exerciseId,
-          interaccionId,
-          resueltoALaPrimera: false,
-        });
-      } catch (e) {
-        console.error("Error finalizando resultado:", e);
-      } finally {
-        navigate("/dashboard");
-      }
-    },
-    [navigate, userId]
-  );
+  // ✅ “Reintentar” el mismo ejercicio sin perder historial
+  const startNewAttemptSameExercise = useCallback(() => {
+    if (!ejercicioActualId) return;
 
-  const enviarMensaje = useCallback(async () => {
-    const ej = ejerciciosDisponibles.find((e) => e._id === ejercicioActualId);
-    const texto = nuevoMensaje.trim();
-    if (!texto || !ej || sendingRef.current) return;
-
-    if (!userId) {
-      alert("No hay sesión iniciada. Vuelve a Login (demo o CAS).");
-      return;
-    }
-
-    // abort stream anterior por seguridad (no debería haber)
     if (activeAbortRef.current) {
       try { activeAbortRef.current.abort(); } catch {}
       activeAbortRef.current = null;
     }
 
-    setIsSendingMessage(true);
+    setIsSendingMessage(false);
+
+    // ✅ NUEVO: quita “pensando…”
+    setIsTutorThinking(false);
+    firstChunkRef.current = false;
+
+    setCurrentInteraccionId(null);
+    setCurrentChatMessages([]);
     setNuevoMensaje("");
 
-    // pinta user + assistant vacío
-    setCurrentChatMessages((prev) => [
-      ...prev,
-      { role: "user", content: texto },
-      { role: "assistant", content: "" },
-    ]);
+    localStorage.removeItem("currentInteraccionId");
+    navigate(`/interacciones?id=${ejercicioActualId}`, { replace: true });
+  }, [ejercicioActualId, navigate]);
 
-    let acc = "";
-    let newIdFromServer = null;
-    let done = false;
+const enviarMensaje = useCallback(async () => {
+  const ej = ejerciciosDisponibles.find((e) => e._id === ejercicioActualId);
+  const texto = nuevoMensaje.trim();
+  if (!texto || !ej) return;
+  if (sendingRef.current) return;
 
-    const ctrl = new AbortController();
-    activeAbortRef.current = ctrl;
+  // bloquea INMEDIATAMENTE
+  sendingRef.current = true;
+  setIsSendingMessage(true);
 
-    // watchdog: si no llega nada real en mucho tiempo, aborta y desbloquea
-    let lastDataAt = Date.now();
-    const watchdog = setInterval(() => {
-      if (done) return;
-      const diff = Date.now() - lastDataAt;
-      if (diff > 300000) { // 5 min sin datos
-        try { ctrl.abort(); } catch {}
-      }
-    }, 5000);
+  if (!userId) {
+    alert("No hay sesión iniciada. Vuelve a Login (demo o CAS cuando esté disponible).");
+    return;
+  }
 
-    try {
-      await enviarMensajeStream({
-        payload: {
-          userId,
-          exerciseId: ej._id,
-          interaccionId: currentInteraccionId || undefined,
-          llmMode: "upv", // o "local"
-          userMessage: texto,
-        },
-        signal: ctrl.signal,
+  if (activeAbortRef.current) {
+    try { activeAbortRef.current.abort(); } catch {}
+    activeAbortRef.current = null;
+  }
 
-        onInteraccionId: (id) => {
-          newIdFromServer = id;
-          setCurrentInteraccionId(id);
-          // ✅ NO navigate aquí (rompe el primer stream)
-        },
+  setNuevoMensaje("");
 
-        onChunk: (piece) => {
-          lastDataAt = Date.now();
-          acc += piece;
+  // ✅ encender “pensando…”
+  setIsTutorThinking(true);
+  firstChunkRef.current = false;
+  finHandledRef.current = false;
 
-          setCurrentChatMessages((prev) => {
-            const copy = [...prev];
-            const cleaned = stripFinishToken(acc);
-            const last = copy.length - 1;
-
-            if (copy[last]?.role === "assistant") {
-              copy[last] = { ...copy[last], content: cleaned };
-              return copy;
-            }
-            return [...copy, { role: "assistant", content: cleaned }];
-          });
-        },
-
-        onDone: async () => {
-          done = true;
-          clearInterval(watchdog);
-
-          await fetchSidebarInteractions(ejerciciosDisponibles);
-
-          // ✅ ahora sí, actualizamos URL (cuando stream acabó)
-          const iid = newIdFromServer || currentInteraccionId;
-          if (iid) {
-            const desired = `/interacciones?id=${ej._id}&interaccionId=${iid}`;
-            const current = location.pathname + location.search;
-            if (current !== desired) navigate(desired, { replace: true });
-          }
-
-          if (containsFinishToken(acc)) {
-            const iid2 = newIdFromServer || currentInteraccionId;
-            if (iid2) await finalizarEjercicioYRedirigir({ interaccionId: iid2, exerciseId: ej._id });
-          }
-        },
-
-        onError: (err) => {
-          done = true;
-          clearInterval(watchdog);
-          console.error("Stream error:", err);
-
-          setCurrentChatMessages((prev) => {
-            const copy = [...prev];
-            const last = copy.length - 1;
-            if (copy[last]?.role === "assistant" && (copy[last].content || "") === "") {
-              copy[last] = { role: "assistant", content: "Error: No se pudo conectar con el tutor." };
-              return copy;
-            }
-            return [...copy, { role: "assistant", content: "Error: No se pudo conectar con el tutor." }];
-          });
-        },
-      });
-    } finally {
-      clearInterval(watchdog);
-      activeAbortRef.current = null;
-      setIsSendingMessage(false); // ✅ clave para poder mandar el segundo mensaje
-    }
-  }, [
-    ejerciciosDisponibles,
-    ejercicioActualId,
-    nuevoMensaje,
-    currentInteraccionId,
-    userId,
-    fetchSidebarInteractions,
-    finalizarEjercicioYRedirigir,
-    navigate,
-    location.pathname,
-    location.search,
+  setCurrentChatMessages((prev) => [
+    ...prev,
+    { role: "user", content: texto },
+    { role: "assistant", content: "" },
   ]);
+
+  let acc = "";
+  let newIdFromServer = null;
+  let done = false;
+
+  const ctrl = new AbortController();
+  activeAbortRef.current = ctrl;
+
+  let lastDataAt = Date.now();
+  const watchdog = setInterval(() => {
+    if (done) return;
+    if (Date.now() - lastDataAt > 300000) {
+      try { ctrl.abort(); } catch {}
+    }
+  }, 5000);
+
+  try {
+    await enviarMensajeStream({
+      payload: {
+        userId,
+        exerciseId: ej._id,
+        interaccionId: currentInteraccionId || undefined,
+        llmMode: "upv",
+        userMessage: texto,
+      },
+      signal: ctrl.signal,
+
+      onInteraccionId: (id) => {
+        newIdFromServer = id;
+        setCurrentInteraccionId(id);
+      },
+
+      onChunk: (piece) => {
+        lastDataAt = Date.now();
+
+        if (!firstChunkRef.current) {
+          firstChunkRef.current = true;
+          setIsTutorThinking(false);
+        }
+
+        acc += piece;
+
+        setCurrentChatMessages((prev) => {
+          const copy = [...prev];
+          const last = copy.length - 1;
+          if (copy[last]?.role === "assistant") {
+            copy[last] = {
+              ...copy[last],
+              content: stripFinishTokenStreaming(acc),
+            };
+          }
+          return copy;
+        });
+      },
+
+      onDone: async () => {
+        done = true;
+        clearInterval(watchdog);
+
+        setIsTutorThinking(false);
+        firstChunkRef.current = false;
+
+        await fetchSidebarInteractions(ejerciciosDisponibles);
+      },
+
+      onError: (err) => {
+        if (err?.name === "AbortError") return;
+        done = true;
+        clearInterval(watchdog);
+
+        setIsTutorThinking(false);
+        firstChunkRef.current = false;
+
+        setCurrentChatMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: "Error: No se pudo conectar con el tutor." },
+        ]);
+      },
+    });
+  } finally {
+    clearInterval(watchdog);
+    activeAbortRef.current = null;
+    setIsSendingMessage(false);
+    sendingRef.current = false;
+    setIsTutorThinking(false);
+    firstChunkRef.current = false;
+  }
+}, [
+  ejerciciosDisponibles,
+  ejercicioActualId,
+  nuevoMensaje,
+  currentInteraccionId,
+  userId,
+  fetchSidebarInteractions,
+  navigate,
+  location.pathname,
+  location.search,
+]);
+
 
   // ===== Render =====
   if (!authChecked) {
@@ -738,9 +843,51 @@ export default function Interacciones() {
             onClick={() => openImageModal(imgSrc, ejercicioActual.titulo || "Ejercicio")}
           />
 
-          <div className="chat-top-text">
-            <h3 className="chat-top-title">{ejercicioActual.titulo}</h3>
-            <p className="chat-top-enunciado">{ejercicioActual.enunciado}</p>
+          <div className="chat-top-text" style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h3 className="chat-top-title" style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {ejercicioActual.titulo}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAttemptsModal(true)}
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    padding: 0,
+                    cursor: "pointer",
+                    fontSize: "0.86rem",
+                    color: "var(--color-text-muted)",
+                    textDecoration: "underline",
+                    whiteSpace: "nowrap",
+                  }}
+                  title="Ver intentos anteriores"
+                >
+                  Ver intentos ({intentosEjercicioActual.length})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={startNewAttemptSameExercise}
+                  title="Reintentar este ejercicio"
+                  style={{
+                    border: "1px solid var(--color-border)",
+                    background: "var(--color-bg-surface)",
+                    borderRadius: 9999,
+                    padding: "0.15rem 0.55rem",
+                    cursor: "pointer",
+                    fontSize: "0.9rem",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  ↻
+                </button>
+              </h3>
+
+              <p className="chat-top-enunciado">{ejercicioActual.enunciado}</p>
+            </div>
           </div>
         </div>
 
@@ -754,6 +901,24 @@ export default function Interacciones() {
               ))
             ) : (
               <p className="chat-empty">No hay mensajes aún. Escribe el primero para empezar.</p>
+            )}
+
+            {/* ✅ NUEVO: Indicador discreto estilo ChatGPT (solo mientras NO llega el primer chunk) */}
+            {isTutorThinking && (
+              <div className="msg msg-assistant" style={{ opacity: 0.75, display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 9999,
+                    background: "currentColor",
+                    opacity: 0.55,
+                    animation: "pulse 1.2s ease-in-out infinite",
+                  }}
+                />
+                <span style={{ fontSize: "0.95em", color: "var(--color-text-muted)" }}>El tutor está pensando…</span>
+              </div>
             )}
           </div>
 
@@ -784,6 +949,105 @@ export default function Interacciones() {
         </div>
       </main>
 
+      {/* ✅ Modal de intentos (sutil) */}
+      {showAttemptsModal && (
+        <div
+          className="img-modal-backdrop"
+          onClick={() => setShowAttemptsModal(false)}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(560px, 92vw)",
+              maxHeight: "80vh",
+              overflow: "auto",
+              background: "var(--color-bg-surface)",
+              border: "1px solid var(--color-border)",
+              borderRadius: "16px",
+              padding: "1rem",
+              boxShadow: "0 12px 30px rgba(0,0,0,0.18)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: "1.05rem" }}>Intentos anteriores</div>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.9rem", marginTop: 2 }}>
+                  {ejercicioActual?.titulo}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowAttemptsModal(false)}
+                style={{ border: "none", background: "transparent", cursor: "pointer", padding: 6 }}
+                title="Cerrar"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div style={{ height: 1, background: "var(--color-border)", margin: "0.85rem 0" }} />
+
+            {intentosEjercicioActual.length === 0 ? (
+              <div style={{ color: "var(--color-text-muted)" }}>
+                Aún no hay intentos guardados para este ejercicio.
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: "0.55rem" }}>
+                {intentosEjercicioActual.map((it, idx) => {
+                  const fechaTxt = safeDateLabel(it.fecha);
+                  const label = `Intento ${intentosEjercicioActual.length - idx}${fechaTxt ? ` · ${fechaTxt}` : ""}`;
+
+                  return (
+                    <button
+                      key={it.id}
+                      type="button"
+                      onClick={() => abrirIntento(it)}
+                      style={{
+                        textAlign: "left",
+                        width: "100%",
+                        border: "1px solid var(--color-border)",
+                        background: "rgba(0,0,0,0.02)",
+                        borderRadius: "12px",
+                        padding: "0.75rem 0.85rem",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <div style={{ fontWeight: 800 }}>{label}</div>
+                      <div style={{ color: "var(--color-text-muted)", fontSize: "0.92rem", marginTop: 2 }}>
+                        {it.concepto} · Nivel {it.nivel}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div style={{ height: 1, background: "var(--color-border)", margin: "0.85rem 0" }} />
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowAttemptsModal(false);
+                startNewAttemptSameExercise();
+              }}
+              style={{
+                border: "1px solid var(--color-border)",
+                background: "var(--color-bg-surface)",
+                borderRadius: 9999,
+                padding: "0.55rem 0.9rem",
+                cursor: "pointer",
+                fontWeight: 700,
+              }}
+              title="Crear un nuevo intento"
+            >
+              ↻ Crear nuevo intento
+            </button>
+          </div>
+        </div>
+      )}
+
       {showImageModal && (
         <div className="img-modal-backdrop" onClick={closeImageModal}>
           <div className="img-modal" onClick={(e) => e.stopPropagation()}>
@@ -794,6 +1058,14 @@ export default function Interacciones() {
           </div>
         </div>
       )}
+
+      {/* ✅ NUEVO: animación pulse local (si no la tienes en CSS global) */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: .35; }
+          50% { transform: scale(1.15); opacity: .75; }
+        }
+      `}</style>
     </div>
   );
 }
