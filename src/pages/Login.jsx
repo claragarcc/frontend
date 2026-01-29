@@ -14,7 +14,7 @@ const handleSSOLogin = useCallback(() => {
   setLoading(true);
   localStorage.removeItem("tv_demo_enabled"); // ✅ no demo si vas por CAS
   const returnTo = encodeURIComponent(window.location.origin + "/home");
-  window.location.href = `/api/auth/cas/login?returnTo=${returnTo}`;
+  window.location.href = "https://tutor-virtual.dsic.upv.es/api/auth/cas/login";
 }, []);
 
 // Demo: crea sesión REAL en backend (cookie) + marca demo en front
