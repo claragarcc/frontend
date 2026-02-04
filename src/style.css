@@ -632,13 +632,17 @@ input:focus, textarea:focus, select:focus {
    PANTALLA: HOME (Home.jsx)
    ========================================================= */
 
-/* Scope general: evita scroll lateral */
+/* =========================
+   Scope general
+   ========================= */
 .home-scope{
   background-color: var(--color-bg-app);
   overflow-x: hidden;
 }
 
-/* Cabecera */
+/* =========================
+   Cabecera
+   ========================= */
 .main-header{
   position: relative;
   text-align: center;
@@ -675,7 +679,9 @@ input:focus, textarea:focus, select:focus {
   line-height: 1.55;
 }
 
-/* Contenedor split */
+/* =========================
+   Contenedor split
+   ========================= */
 .home-split-wrap{
   padding: 1.25rem 1rem 2rem;
   background-color: var(--color-bg-app);
@@ -683,42 +689,32 @@ input:focus, textarea:focus, select:focus {
 
 .home-split{
   width: 100%;
-  max-width: 100%;
   display: flex;
   flex-direction: column; /* móvil */
   border-radius: var(--radius-lg);
   overflow: hidden;
   border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-sm);
   background-color: var(--color-bg-surface);
 }
 
-/* Panel base */
+/* =========================
+   Panel base
+   ========================= */
 .split-panel{
   width: 100%;
-  min-height: auto;
   padding: 1.6rem 1.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  overflow: hidden;
   text-decoration: none;
 
-  /* ✅ mismo color siempre (activo y desactivado) */
-  background-color: var(--color-bg-surface) !important;
-  color: var(--color-text-main) !important;
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-main);
 
-  /* ✅ hover estable */
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-  will-change: transform;
-  transform: translateZ(0);
-}
-
-/* Si aún llevas bg-slate-200 en el desactivado, lo neutralizamos */
-.split-panel.bg-slate-200{
-  background-color: var(--color-bg-surface) !important;
-  color: var(--color-text-main) !important;
+  /* Transición suave y estándar */
+  transition: background-color 0.25s ease,
+              transform 0.25s ease;
 }
 
 /* Separador entre paneles (móvil) */
@@ -726,7 +722,9 @@ input:focus, textarea:focus, select:focus {
   border-top: 1px solid var(--color-border);
 }
 
-/* Contenido */
+/* =========================
+   Contenido
+   ========================= */
 .split-content{
   text-align: center;
   display: flex;
@@ -751,25 +749,15 @@ input:focus, textarea:focus, select:focus {
   color: var(--color-text-muted);
 }
 
-/* Acento rojo lateral (por defecto apagado) */
-.split-panel::before{
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 0px;
-  background-color: var(--color-primary);
-  transition: width 0.18s ease;
-  opacity: 0.95;
-}
-
 /* Iconos */
 .split-content .h-16{
-  transition: transform 0.18s ease, color 0.18s ease, opacity 0.18s ease;
+  transition: color 0.25s ease;
+  color: var(--color-text-muted);
 }
 
-/* CTA */
+/* =========================
+   CTA
+   ========================= */
 .cta-button,
 .cta-button-disabled{
   display: inline-flex;
@@ -788,34 +776,39 @@ input:focus, textarea:focus, select:focus {
 .cta-button{
   background-color: var(--color-text-main);
   color: var(--color-bg-surface);
-  opacity: 1;
-  transform: translateY(0);
-  transition: background-color 0.18s ease, transform 0.12s ease;
+  transition: background-color 0.25s ease;
 }
 
 .cta-button:hover{
   background-color: var(--color-primary);
 }
 
-.cta-button:active{
-  transform: scale(0.98);
-}
-
-.cta-button:focus-visible{
-  outline: 2px solid var(--color-primary);
-  outline-offset: 3px;
-}
-
 /* CTA desactivado */
 .cta-button-disabled{
-  background-color: rgba(0,0,0,0.08);
+  background-color: rgba(0,0,0,0.06);
   color: rgba(0,0,0,0.55);
   border: 1px solid rgba(0,0,0,0.10);
 }
 
-/* Desactivado: mismo fondo, “apagado” */
+/* =========================
+   Estados
+   ========================= */
+
+/* Hover SOLO desktop */
+@media (hover: hover) and (pointer: fine){
+  .split-panel:not(.cursor-not-allowed):hover{
+    background-color: var(--color-bg-hover);
+    transform: translateY(-1px);
+  }
+
+  .split-panel:not(.cursor-not-allowed):hover .split-content .h-16{
+    color: var(--color-primary);
+  }
+}
+
+/* Desactivado */
 .split-panel.cursor-not-allowed{
-  opacity: 0.72;
+  opacity: 0.7;
   cursor: not-allowed;
 }
 
@@ -831,7 +824,6 @@ input:focus, textarea:focus, select:focus {
     flex-direction: row;
   }
 
-  /* Separador entre paneles en desktop */
   .home-split > .split-panel + .split-panel{
     border-top: 0;
     border-left: 1px solid var(--color-border);
@@ -841,39 +833,6 @@ input:focus, textarea:focus, select:focus {
     width: 50%;
     min-height: 56vh;
     padding: 2rem 1.8rem;
-  }
-
-  /* Hover SOLO para el clicable */
-  @media (hover: hover) and (pointer: fine){
-    .split-panel:not(.cursor-not-allowed):hover{
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-md);
-    }
-
-    .split-panel:not(.cursor-not-allowed):hover::before{
-      width: 6px;
-    }
-
-    .split-panel:not(.cursor-not-allowed):hover .split-content .h-16{
-      color: var(--color-primary) !important;
-      transform: translateY(-1px) scale(1.02);
-    }
-
-    /* ✅ CLAVE: desactivado totalmente fijo, sin rojo ni nada */
-    .split-panel.cursor-not-allowed:hover{
-      transform: none !important;
-      box-shadow: none !important;
-    }
-    .split-panel.cursor-not-allowed:hover::before{
-      width: 0 !important;
-    }
-    .split-panel.cursor-not-allowed:hover .split-content .h-16{
-      transform: none !important;
-      color: inherit !important;
-    }
-    .split-panel.cursor-not-allowed:hover .cta-button-disabled{
-      transform: none !important;
-    }
   }
 }
 

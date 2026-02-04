@@ -8,18 +8,24 @@ import Home from "./pages/Home.jsx";
 import Ejercicios from "./pages/Ejercicios.jsx";
 import Login from "./pages/Login.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import Footer from "./components/Footer.jsx";
 
 export default function App() {
   const location = useLocation();
+
   const isLoginPage = location.pathname === "/login";
+  const isInteraccionesPage = location.pathname === "/interacciones";
+
+  const showNavbar = !isLoginPage;
+  const showFooter = !isLoginPage && !isInteraccionesPage;
 
   return (
     <div className="flex flex-col min-h-screen w-screen bg-white">
-      {!isLoginPage && <Navbar />}
+      {showNavbar && <Navbar />}
 
       <div className="flex-1">
         <Routes>
-          {/* ✅ Entrada: intenta ir a Home (si no hay sesión, ProtectedRoute te manda a Login) */}
+          {/* Entrada */}
           <Route
             path="/"
             element={
@@ -74,10 +80,12 @@ export default function App() {
             }
           />
 
-          {/* ✅ Catch-all: mejor mandar a "/" (que decidirá login vs home) */}
+          {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
+
+      {showFooter && <Footer />}
     </div>
   );
 }
