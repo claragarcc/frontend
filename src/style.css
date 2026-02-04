@@ -281,6 +281,226 @@ input:focus, textarea:focus, select:focus {
   -webkit-overflow-scrolling: touch;
 }
 
+/* ===== LOGIN (liso, centrado, sin burbujas/sombras) ===== */
+.tv-login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2.5rem 1rem;
+
+  /* Fondo liso (sin degradados ni burbujas) */
+  background: #f6f6f7;
+}
+
+.tv-login__card {
+  /* Más ancho */
+  width: min(980px, 100%);
+
+  border-radius: 18px;
+  overflow: hidden;
+  background: #ffffff;
+
+  /* Sin sombra (coherente con tu web) */
+  box-shadow: none;
+
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+/* Header liso */
+.tv-login__header {
+  padding: 2.2rem 2.5rem 1.6rem;
+  background: #ffffff;
+  position: relative;
+
+  /* Separación limpia */
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+/* Quitar burbujas del header */
+.tv-login__header::before,
+.tv-login__header::after {
+  content: none;
+}
+
+/* Brand centrado (logo + títulos) */
+.tv-login__brand {
+  display: flex;
+  flex-direction: column;     /* ⬅️ apila */
+  align-items: center;        /* ⬅️ centra */
+  gap: 0.9rem;
+}
+
+/* Logo integrado: sin caja ni sombra */
+.tv-login__logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* Si usas fallback: también sin brillo */
+.tv-login__logoFallback {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  background: #E72621;
+  box-shadow: none; /* ⬅️ fuera brillo */
+}
+
+.tv-login__titles {
+  display: grid;
+  gap: 0.35rem;
+  text-align: center; /* ⬅️ centra textos */
+}
+
+/* Título con detalle “guay” pero limpio: subrayado rojo */
+.tv-login__title {
+  margin: 0;
+  font-size: 2.05rem;
+  line-height: 1.08;
+  font-weight: 750;
+  color: #231F20;
+  text-align: center;
+  position: relative;
+}
+
+/* Subrayado rojo centrado y liso */
+.tv-login__title::after {
+  content: "";
+  display: block;
+  width: 170px;
+  height: 6px;
+  background: #E72621;
+  border-radius: 999px;
+  margin: 0.55rem auto 0;
+}
+
+.tv-login__subtitle {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(0,0,0,0.62);
+  text-align: center;
+}
+
+/* Badge eliminado: si lo dejaste en JSX, lo ocultamos */
+.tv-login__badge {
+  display: none;
+}
+
+/* Body centrado */
+.tv-login__body {
+  padding: 2.2rem 2.5rem 2.6rem;
+  display: grid;
+  gap: 1.35rem;
+  justify-items: center; /* ⬅️ centra los bloques */
+}
+
+/* Panel: gris suave, sin color azul */
+.tv-login__panel {
+  width: min(640px, 100%);  /* ⬅️ que no se vaya demasiado ancho */
+  border-radius: 14px;
+  padding: 1.1rem 1.2rem;
+  background: rgba(0,0,0,0.03);
+  border: 1px solid rgba(0,0,0,0.08);
+  text-align: center;       /* ⬅️ centra contenido */
+}
+
+.tv-login__panelTitle {
+  font-weight: 750;
+  color: #231F20;           /* ⬅️ sin azul */
+  margin-bottom: 0.35rem;
+}
+
+.tv-login__panelText {
+  color: rgba(0,0,0,0.65);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+/* Botón: rojo, sin sombra, sin “brillo” */
+.tv-login__btn {
+  width: min(520px, 100%);
+  height: 54px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.08);
+
+  background: #E72621;
+  color: #ffffff;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+
+  font-size: 1rem;
+  font-weight: 650;
+  cursor: pointer;
+
+  box-shadow: none; /* ⬅️ fuera glow */
+  transition: transform 120ms ease, opacity 120ms ease, filter 120ms ease;
+}
+
+/* Hover MUY sutil, sin sombras */
+.tv-login__btn:hover {
+ background-color: var(--color-text-main);
+  border-color: rgba(231, 38, 33, 0.35);
+  color: var(--color-bg-surface);
+  
+
+}
+
+
+.tv-login__btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+
+.tv-login__btnIcon {
+  width: 22px;
+  height: 22px;
+}
+
+/* Foot centrado */
+.tv-login__foot {
+  width: min(640px, 100%);
+  text-align: center;
+  font-size: 0.82rem;
+  color: rgba(0,0,0,0.52);
+  line-height: 1.35;
+}
+
+/* Responsive */
+@media (max-width: 520px) {
+  .tv-login__header,
+  .tv-login__body {
+    padding: 1.35rem;
+  }
+
+  .tv-login__title {
+    font-size: 1.65rem;
+  }
+
+  .tv-login__title::after {
+    width: 135px;
+    height: 6px;
+  }
+
+  .tv-login__logo,
+  .tv-login__logoFallback {
+    width: 60px;
+    height: 60px;
+  }
+}
+
 
 .login-card {
   width: 100%;
@@ -2184,9 +2404,9 @@ input:focus, textarea:focus, select:focus {
 
 
 .chat-top-img{
-  width: clamp(110px, 18vw, 220px);
+  width: clamp(170px, 25vw, 310px);
   height: auto;
-  max-height: 140px;
+  max-height: 200px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-bg-disabled);
@@ -2195,7 +2415,7 @@ input:focus, textarea:focus, select:focus {
   transition: transform 0.18s ease;
 }
 
-.chat-top-img:hover{ transform: scale(1.01); }
+.chat-top-img:hover{ transform: scale(1.1); }
 
 .chat-top-text{
   min-width: 0;

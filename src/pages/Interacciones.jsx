@@ -179,7 +179,7 @@ export default function Interacciones() {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const sendingRef = useRef(false);
 
-  // ✅ NUEVO: indicador discreto “pensando…”
+  // ✅ indicador “pensando…”
   const [isTutorThinking, setIsTutorThinking] = useState(false);
   const firstChunkRef = useRef(false);
 
@@ -191,18 +191,30 @@ export default function Interacciones() {
   const [modalImageUrl, setModalImageUrl] = useState("");
   const [modalImageAlt, setModalImageAlt] = useState("");
 
-  // ✅ modal sutil de intentos
+  // ✅ modal intentos
   const [showAttemptsModal, setShowAttemptsModal] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
   const scrollRef = useRef(null);
 
-  // abort del stream actual si el usuario cambia de chat (o refresca)
+  // abort del stream actual si el usuario cambia de chat
   const activeAbortRef = useRef(null);
 
   // ✅ evita procesar FIN más de una vez por mensaje
   const finHandledRef = useRef(false);
+
+  // ✅ refs para evitar “closures viejos”
+  const interaccionIdRef = useRef(null);
+  const currentChatMessagesRef = useRef([]);
+
+  useEffect(() => {
+    interaccionIdRef.current = currentInteraccionId;
+  }, [currentInteraccionId]);
+
+  useEffect(() => {
+    currentChatMessagesRef.current = currentChatMessages;
+  }, [currentChatMessages]);
 
   // móvil
   useEffect(() => {
@@ -255,12 +267,10 @@ export default function Interacciones() {
     });
   }, [queryEj, ejerciciosDisponibles]);
 
-  // ✅ lista de "intentos" para el ejercicio actual (se ve SOLO en el modal)
+  // lista de intentos para el ejercicio actual
   const intentosEjercicioActual = useMemo(() => {
     if (!ejercicioActualId) return [];
     const list = (sidebarInteractions || []).filter((it) => it.ejercicioId === ejercicioActualId);
-
-    // más reciente primero si tenemos fecha
     return [...list].sort((a, b) => {
       const da = a?.fecha ? new Date(a.fecha).getTime() : 0;
       const db = b?.fecha ? new Date(b.fecha).getTime() : 0;
@@ -330,7 +340,6 @@ export default function Interacciones() {
           return {
             id: it._id,
             ejercicioId: it.ejercicio_id,
-            // fecha para ordenar intentos
             fecha: it.fin || it.inicio || it.updatedAt || it.createdAt || it.fecha || null,
             titulo: ej ? ej.titulo : `Ejercicio desconocido (${it.ejercicio_id})`,
             concepto: ej ? ej.concepto : "Desconocido",
@@ -352,7 +361,6 @@ export default function Interacciones() {
     const newInteraccionId = r.data?._id || null;
     const newExerciseId = r.data?.ejercicio_id || null;
 
-    // ✅ IMPORTANTE: sanitizar conversación cargada (aquí es donde te aparecía el token al re-entrar)
     const loadedRaw = Array.isArray(r.data?.conversacion) ? r.data.conversacion : [];
     const loaded = sanitizeConversation(loadedRaw);
 
@@ -441,7 +449,6 @@ export default function Interacciones() {
       }
       setIsSendingMessage(false);
 
-      // ✅ NUEVO: si cambias de chat, quita “pensando…”
       setIsTutorThinking(false);
       firstChunkRef.current = false;
 
@@ -497,7 +504,6 @@ export default function Interacciones() {
       }
       setIsSendingMessage(false);
 
-      // ✅ NUEVO: al abrir chat nuevo, quita “pensando…”
       setIsTutorThinking(false);
       firstChunkRef.current = false;
 
@@ -513,7 +519,7 @@ export default function Interacciones() {
     [navigate, isMobileView]
   );
 
-  // ✅ “Reintentar” el mismo ejercicio sin perder historial
+  // reintentar mismo ejercicio
   const startNewAttemptSameExercise = useCallback(() => {
     if (!ejercicioActualId) return;
 
@@ -523,8 +529,6 @@ export default function Interacciones() {
     }
 
     setIsSendingMessage(false);
-
-    // ✅ NUEVO: quita “pensando…”
     setIsTutorThinking(false);
     firstChunkRef.current = false;
 
@@ -536,137 +540,194 @@ export default function Interacciones() {
     navigate(`/interacciones?id=${ejercicioActualId}`, { replace: true });
   }, [ejercicioActualId, navigate]);
 
-const enviarMensaje = useCallback(async () => {
-  const ej = ejerciciosDisponibles.find((e) => e._id === ejercicioActualId);
-  const texto = nuevoMensaje.trim();
-  if (!texto || !ej) return;
-  if (sendingRef.current) return;
+  // ✅ guarda resultados cuando llega FIN
+  const finalizarResultado = useCallback(
+    async ({ exerciseId, interaccionId, resueltoALaPrimera }) => {
+      if (!userId || !exerciseId || !interaccionId) return;
 
-  // bloquea INMEDIATAMENTE
-  sendingRef.current = true;
-  setIsSendingMessage(true);
-
-  if (!userId) {
-    alert("No hay sesión iniciada. Vuelve a Login (demo o CAS cuando esté disponible).");
-    return;
-  }
-
-  if (activeAbortRef.current) {
-    try { activeAbortRef.current.abort(); } catch {}
-    activeAbortRef.current = null;
-  }
-
-  setNuevoMensaje("");
-
-  // ✅ encender “pensando…”
-  setIsTutorThinking(true);
-  firstChunkRef.current = false;
-  finHandledRef.current = false;
-
-  setCurrentChatMessages((prev) => [
-    ...prev,
-    { role: "user", content: texto },
-    { role: "assistant", content: "" },
-  ]);
-
-  let acc = "";
-  let newIdFromServer = null;
-  let done = false;
-
-  const ctrl = new AbortController();
-  activeAbortRef.current = ctrl;
-
-  let lastDataAt = Date.now();
-  const watchdog = setInterval(() => {
-    if (done) return;
-    if (Date.now() - lastDataAt > 300000) {
-      try { ctrl.abort(); } catch {}
-    }
-  }, 5000);
-
-  try {
-    await enviarMensajeStream({
-      payload: {
-        userId,
-        exerciseId: ej._id,
-        interaccionId: currentInteraccionId || undefined,
-        llmMode: "upv",
-        userMessage: texto,
-      },
-      signal: ctrl.signal,
-
-      onInteraccionId: (id) => {
-        newIdFromServer = id;
-        setCurrentInteraccionId(id);
-      },
-
-      onChunk: (piece) => {
-        lastDataAt = Date.now();
-
-        if (!firstChunkRef.current) {
-          firstChunkRef.current = true;
-          setIsTutorThinking(false);
-        }
-
-        acc += piece;
-
-        setCurrentChatMessages((prev) => {
-          const copy = [...prev];
-          const last = copy.length - 1;
-          if (copy[last]?.role === "assistant") {
-            copy[last] = {
-              ...copy[last],
-              content: stripFinishTokenStreaming(acc),
-            };
-          }
-          return copy;
+      try {
+        await api.post("/api/resultados/finalizar", {
+          userId,
+          exerciseId,
+          interaccionId,
+          resueltoALaPrimera,
         });
-      },
+      } catch (e) {
+        console.error("[FINALIZAR RESULTADO] Error:", e?.response?.data || e?.message || e);
+      }
+    },
+    [userId]
+  );
 
-      onDone: async () => {
-        done = true;
-        clearInterval(watchdog);
+  const enviarMensaje = useCallback(async () => {
+    const ej = ejerciciosDisponibles.find((e) => e._id === ejercicioActualId);
+    const texto = nuevoMensaje.trim();
+    if (!texto || !ej) return;
+    if (sendingRef.current) return;
 
-        setIsTutorThinking(false);
-        firstChunkRef.current = false;
+    // bloquea INMEDIATAMENTE
+    sendingRef.current = true;
+    setIsSendingMessage(true);
 
-        await fetchSidebarInteractions(ejerciciosDisponibles);
-      },
+    // ✅ si no hay sesión, NO te quedes bloqueada
+    if (!userId) {
+      alert("No hay sesión iniciada. Vuelve a Login.");
+      setIsSendingMessage(false);
+      sendingRef.current = false;
+      setIsTutorThinking(false);
+      firstChunkRef.current = false;
+      return;
+    }
 
-      onError: (err) => {
-        if (err?.name === "AbortError") return;
-        done = true;
-        clearInterval(watchdog);
+    if (activeAbortRef.current) {
+      try { activeAbortRef.current.abort(); } catch {}
+      activeAbortRef.current = null;
+    }
 
-        setIsTutorThinking(false);
-        firstChunkRef.current = false;
+    setNuevoMensaje("");
 
-        setCurrentChatMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: "Error: No se pudo conectar con el tutor." },
-        ]);
-      },
-    });
-  } finally {
-    clearInterval(watchdog);
-    activeAbortRef.current = null;
-    setIsSendingMessage(false);
-    sendingRef.current = false;
-    setIsTutorThinking(false);
+    setIsTutorThinking(true);
     firstChunkRef.current = false;
-  }
-}, [
-  ejerciciosDisponibles,
-  ejercicioActualId,
-  nuevoMensaje,
-  currentInteraccionId,
-  userId,
-  fetchSidebarInteractions,
-  navigate,
-  location.pathname,
-  location.search,
-]);
+    finHandledRef.current = false;
 
+    setCurrentChatMessages((prev) => [
+      ...prev,
+      { role: "user", content: texto },
+      { role: "assistant", content: "" },
+    ]);
+
+    let acc = "";
+    let newIdFromServer = null;
+    let done = false;
+    let finDetected = false;
+
+    const ctrl = new AbortController();
+    activeAbortRef.current = ctrl;
+
+    let lastDataAt = Date.now();
+    const watchdog = setInterval(() => {
+      if (done) return;
+      if (Date.now() - lastDataAt > 300000) {
+        try { ctrl.abort(); } catch {}
+      }
+    }, 5000);
+
+    try {
+      await enviarMensajeStream({
+        payload: {
+          userId,
+          exerciseId: ej._id,
+          interaccionId: currentInteraccionId || undefined,
+          llmMode: "upv",
+          userMessage: texto,
+        },
+        signal: ctrl.signal,
+
+        onInteraccionId: (id) => {
+          newIdFromServer = id;
+          interaccionIdRef.current = id;
+          setCurrentInteraccionId(id);
+        },
+
+        onChunk: (piece) => {
+          lastDataAt = Date.now();
+
+          if (!firstChunkRef.current) {
+            firstChunkRef.current = true;
+            setIsTutorThinking(false);
+          }
+
+          acc += piece;
+
+          // ✅ Detectar FIN una sola vez
+          if (!finHandledRef.current && containsFinishToken(acc)) {
+            finHandledRef.current = true;
+            finDetected = true;
+
+            const iid = newIdFromServer || interaccionIdRef.current;
+            if (iid) {
+              const userCount = (currentChatMessagesRef.current || []).filter((m) => m.role === "user").length;
+              const firstTry = userCount <= 1;
+
+              finalizarResultado({
+                exerciseId: ej._id,
+                interaccionId: iid,
+                resueltoALaPrimera: firstTry,
+              });
+            } else {
+              console.warn("[FIN] token detectado pero aún no hay interaccionId; se intentará en onDone.");
+            }
+          }
+
+          setCurrentChatMessages((prev) => {
+            const copy = [...prev];
+            const last = copy.length - 1;
+            if (copy[last]?.role === "assistant") {
+              copy[last] = {
+                ...copy[last],
+                content: stripFinishTokenStreaming(acc),
+              };
+            }
+            return copy;
+          });
+        },
+
+        onDone: async () => {
+          done = true;
+          clearInterval(watchdog);
+
+          setIsTutorThinking(false);
+          firstChunkRef.current = false;
+
+          // ✅ Backup: si el FIN llegó antes de tener interaccionId, finaliza aquí
+          if (finDetected) {
+            const iid = newIdFromServer || interaccionIdRef.current;
+            if (iid) {
+              const userCount = (currentChatMessagesRef.current || []).filter((m) => m.role === "user").length;
+              const firstTry = userCount <= 1;
+
+              await finalizarResultado({
+                exerciseId: ej._id,
+                interaccionId: iid,
+                resueltoALaPrimera: firstTry,
+              });
+            }
+          }
+
+          await fetchSidebarInteractions(ejerciciosDisponibles);
+        },
+
+        onError: (err) => {
+          if (err?.name === "AbortError") return;
+          done = true;
+          clearInterval(watchdog);
+
+          setIsTutorThinking(false);
+          firstChunkRef.current = false;
+
+          setCurrentChatMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: "Error: No se pudo conectar con el tutor." },
+          ]);
+        },
+      });
+    } finally {
+      clearInterval(watchdog);
+      activeAbortRef.current = null;
+      setIsSendingMessage(false);
+      sendingRef.current = false;
+      setIsTutorThinking(false);
+      firstChunkRef.current = false;
+    }
+  }, [
+    ejerciciosDisponibles,
+    ejercicioActualId,
+    nuevoMensaje,
+    currentInteraccionId,
+    userId,
+    fetchSidebarInteractions,
+    finalizarResultado,
+  ]);
 
   // ===== Render =====
   if (!authChecked) {
@@ -681,7 +742,7 @@ const enviarMensaje = useCallback(async () => {
     return (
       <div className="interacciones-cargando">
         <p>No hay sesión iniciada.</p>
-        <p>Vuelve a Login y entra en modo demo (o CAS cuando esté disponible).</p>
+        <p>Vuelve a Login.</p>
       </div>
     );
   }
@@ -903,7 +964,6 @@ const enviarMensaje = useCallback(async () => {
               <p className="chat-empty">No hay mensajes aún. Escribe el primero para empezar.</p>
             )}
 
-            {/* ✅ NUEVO: Indicador discreto estilo ChatGPT (solo mientras NO llega el primer chunk) */}
             {isTutorThinking && (
               <div className="msg msg-assistant" style={{ opacity: 0.75, display: "flex", gap: "0.5rem", alignItems: "center" }}>
                 <span
@@ -949,7 +1009,7 @@ const enviarMensaje = useCallback(async () => {
         </div>
       </main>
 
-      {/* ✅ Modal de intentos (sutil) */}
+      {/* Modal intentos */}
       {showAttemptsModal && (
         <div
           className="img-modal-backdrop"
@@ -1059,7 +1119,6 @@ const enviarMensaje = useCallback(async () => {
         </div>
       )}
 
-      {/* ✅ NUEVO: animación pulse local (si no la tienes en CSS global) */}
       <style>{`
         @keyframes pulse {
           0%, 100% { transform: scale(1); opacity: .35; }
